@@ -9,12 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.3.0-preview.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "@types/styled-components": "^5.1.36",
+    "firebase": "^12.14.0",
+    "lucide-react": "^1.17.0",
+    "mapbox-gl": "^3.24.0",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-icons": "^5.6.0",
+    "styled-components": "^6.4.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
