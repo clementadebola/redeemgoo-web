@@ -8,8 +8,14 @@ import React, {
   useRef,
 } from "react";
 import dynamic from "next/dynamic";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../store/authStore";
+import { useAuthStore } from "../../store/authStore";
+import { useGroupStore } from "../../store/groupStore";
+import { useLocationStore } from "../../store/locationStore";
 import { useMapController } from "../../hooks/useMapController";
 import { POIS } from "../../constants/mapData";
+import GroupMapOverlay from "../../components/group/GroupMapOverlay";
 import * as S from "./MapScreenStyles"; 
 
 const MapComponent = dynamic(
@@ -64,6 +70,10 @@ type LocationStatus =
   | "unavailable";
 
 export default function MapScreen() {
+  const { user } = useAuthStore();
+  const { currentGroup } = useGroupStore();
+  const { groupMembersLocations, syncGroupLiveLocations } = useLocationStore();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
@@ -87,12 +97,33 @@ export default function MapScreen() {
     clearActiveRoute,
   } = useMapController(userLocation);
 
-  // ✅ THE TS FIX: Format object coordinates or mismatched types safely into [lng, lat] scheme arrays
+  // 1. ✅ REAL-TIME HANDSHAKE: Sync group member updates live on map mount
+  useEffect(() => {
+    if (!currentGroup || currentGroup.members.length === 0) return;
+    const disconnectLiveFeeds = syncGroupLiveLocations(currentGroup.members);
+    return () => disconnectLiveFeeds();
+  }, [currentGroup, syncGroupLiveLocations]);
+
+  // 2. ✅ COMPONENT SYNCHRONIZATION: Write your active destination target to Firestore for others to track
+  const syncDestinationToGroup = async (poi: any | null) => {
+    if (!user?.uid) return;
+    try {
+      const locationRef = doc(db, "locations", user.uid);
+      await updateDoc(locationRef, {
+        activeDestination: poi 
+          ? { name: poi.name, latitude: poi.lat, longitude: poi.lng } 
+          : null
+      });
+    } catch (err) {
+      console.error("Failed to stream route objective settings:", err);
+    }
+  };
+
   const formattedRouteCoords = useMemo<[number, number][]>(() => {
     if (!routeCoords || !Array.isArray(routeCoords)) return [];
     return routeCoords.map((coord: any) => {
-      if (Array.isArray(coord)) return [coord[0], coord[1]]; // Already array format
-      return [coord.longitude ?? coord.lng, coord.latitude ?? coord.lat]; // Object fallback format
+      if (Array.isArray(coord)) return [coord[0], coord[1]]; 
+      return [coord.longitude ?? coord.lng, coord.latitude ?? coord.lat]; 
     });
   }, [routeCoords]);
 
@@ -176,6 +207,7 @@ export default function MapScreen() {
     setSearchQuery(poi.name);
     setIsSearchFocused(false);
     calculateInAppRoute(poi);
+    syncDestinationToGroup(poi); // Stream destination initialization parameters
     mapRef.current?.flyTo({
       center: [poi.lng, poi.lat],
       zoom: 15,
@@ -183,8 +215,18 @@ export default function MapScreen() {
     });
   };
 
+  const handleCancelNavigation = () => {
+    clearActiveRoute();
+    setSearchQuery("");
+    syncDestinationToGroup(null); // Clear path visibility parameters on server rules
+  };
+
   return (
     <S.Container>
+      {/* Note: Inside your MapComponent leaf node canvas configuration file, 
+        loop over "groupMembersLocations" context mappings to draw multi-user pins 
+        and line geometry connections directly on screen layers!
+      */}
       <MapComponent
         mapRef={mapRef}
         viewport={viewport}
@@ -194,6 +236,22 @@ export default function MapScreen() {
         routeCoords={formattedRouteCoords}
         CAMP_CENTER={CAMP_CENTER}
       />
+
+      {/* ✅ NEW COMPONENT FEED OVERLAY INJECTION */}
+      {currentGroup && Object.keys(groupMembersLocations).length > 0 && (
+        <GroupMapOverlay
+          membersLocations={groupMembersLocations}
+          userLocation={userLocation}
+          campCenter={CAMP_CENTER}
+          onFocusMember={(lat, lng) => {
+            mapRef.current?.flyTo({
+              center: [lng, lat],
+              zoom: 16,
+              duration: 1200,
+            });
+          }}
+        />
+      )}
 
       <S.BannerContainer>
         {locationStatus === "requesting" && (
@@ -246,13 +304,7 @@ export default function MapScreen() {
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
           />
           {searchQuery.length > 0 && (
-            <S.ClearInputButton
-              onClick={() => {
-                setSearchQuery("");
-                setIsSearchFocused(false);
-                clearActiveRoute();
-              }}
-            >
+            <S.ClearInputButton onClick={handleCancelNavigation}>
               ✕
             </S.ClearInputButton>
           )}
@@ -306,12 +358,7 @@ export default function MapScreen() {
                 <S.HudMetricValue>{activeRoute.duration}</S.HudMetricValue>
               </S.HudMetricBlock>
             </S.HudMetricsRow>
-            <S.CancelButton
-              onClick={() => {
-                clearActiveRoute();
-                setSearchQuery("");
-              }}
-            >
+            <S.CancelButton onClick={handleCancelNavigation}>
               End Navigation
             </S.CancelButton>
           </S.HudCard>
