@@ -4,22 +4,28 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useRouter } from 'next/navigation';
 import { 
-  Users, UserPlus, Link2, Check, X, Bell, UserCheck, 
-  ShieldAlert, Loader, MapPin, UserCheck2, ArrowRight 
+  Users, Check, X, Bell, UserCheck, 
+  ShieldAlert, MapPin, UserCheck2, ArrowRight 
 } from 'lucide-react';
+
 import { useAuthStore } from '../../store/authStore';
 import { useGroupStore } from '../../store/groupStore';
+
+// Modular Component Imports
+import InviteUserCard from './InviteUserCard';
+import InviteGuestCard from './InviteGuestCard';
 
 const Colors = {
   primary: '#10b981',
   primaryLight: '#e6f7f0',
   textPrimary: '#1C1C1E',
-  textSecondary: '#131314',
+  textSecondary: '#8e8e93',
   border: '#e5e5ea',
   white: '#ffffff',
   error: '#ff3b30',
   errorLight: '#ffebe9',
-  success: '#34c759'
+  success: '#34c759',
+  background: '#f8f9fa'
 };
 
 export default function GroupsManagerPage() {
@@ -28,11 +34,7 @@ export default function GroupsManagerPage() {
   const store = useGroupStore();
 
   const [groupName, setGroupName] = useState('');
-  const [searchUser, setSearchUser] = useState('');
-  const [inviteStatus, setInviteStatus] = useState({ show: false, success: false, message: '' });
-  const [copied, setCopied] = useState(false);
 
-  // Synchronize dynamic live database network sync channels on startup mount
   useEffect(() => {
     if (!user?.uid) return;
     const disconnectStream = store.listenToGroupAndNotifications(user.uid);
@@ -45,24 +47,11 @@ export default function GroupsManagerPage() {
     store.createGroup(groupName.trim(), user.uid, profile.displayName, profile.username);
   };
 
-  const handleInviteUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchUser.trim() || !user?.uid || !profile) return;
-    
-    const result = await store.inviteUserByUsername(searchUser, user.uid, profile.displayName);
-    setInviteStatus({ show: true, success: result.success, message: result.message });
-    if (result.success) setSearchUser('');
+  const handleInviteAction = async (targetUsername: string) => {
+    if (!user?.uid || !profile) return { success: false, message: 'Session invalid' };
+    return await store.inviteUserByUsername(targetUsername, user.uid, profile.displayName);
   };
 
-  const handleCopyLink = () => {
-    if (!store.currentGroup) return;
-    const path = store.generateInviteLink(store.currentGroup.id);
-    navigator.clipboard.writeText(path);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-  };
-
-  // Check if you are the lone explorer in your custom circle
   const isAloneInGroup = store.groupMembersProfiles.length <= 1;
 
   return (
@@ -127,11 +116,10 @@ export default function GroupsManagerPage() {
           {/* Main List Management Side Pane */}
           <MainSectionColumn>
             <h1 style={{ fontSize: '20px', color: '#000000', fontWeight: '800', margin: 0 }}>{store.currentGroup.name}</h1>
-            <p style={{ color: Colors.textSecondary, margin: '-12px 0 12px 0', fontSize: '14px' }}>
+            <p style={{ color: Colors.textSecondary, margin: '-4px 0 12px 0', fontSize: '14px' }}>
               Active tracking metrics and circle geofencing alerts.
             </p>
 
-            {/* ✅ NEW COMPONENT FEATURE: Master Map View Navigation Banner Link */}
             <TraceMapBarButton type="button" onClick={() => router.push('/dashboard/map')}>
               <MapBarContent>
                 <MapIconCircle><MapPin size={18} /></MapIconCircle>
@@ -160,7 +148,6 @@ export default function GroupsManagerPage() {
                 </RosterItemCard>
               ))}
 
-              {/* ✅ NEW COMPONENT FEATURE: Empty/Lone Member Context Suggestion Notice Banner */}
               {isAloneInGroup && (
                 <LoneUserSuggestionCard>
                   <UserCheck2 size={24} color={Colors.primary} />
@@ -177,35 +164,13 @@ export default function GroupsManagerPage() {
             </RosterGridList>
           </MainSectionColumn>
 
-          {/* Invitation Utility Operations Side Bar Panel */}
+          {/* Invitation Side Column Panels Wrapper */}
           <SideSectionColumn>
-            <InteractiveFormCard onSubmit={handleInviteUser}>
-              <SectionHeading style={{ margin: 0 }}><UserPlus size={18} /> Add by Username</SectionHeading>
-              <StyledTextInput 
-                type="text" 
-                placeholder="Enter exact username"
-                value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
-                required
-              />
-              <SubmitButton type="submit">Send In-App Invite</SubmitButton>
-              
-              {inviteStatus.show && (
-                <BannerFeedbackAlert $success={inviteStatus.success}>
-                  {inviteStatus.message}
-                </BannerFeedbackAlert>
-              )}
-            </InteractiveFormCard>
-
-            <InteractiveFormCard as="div">
-              <SectionHeading style={{ margin: 0 }}><Link2 size={18} /> Invite External Guests</SectionHeading>
-              <p style={{ margin: 0, fontSize: '12px', color: Colors.textSecondary, lineHeight: '1.4' }}>
-                Share this magic tracking authorization link with users who do not have an active account yet. It will direct them through registration straight into your tracking loop.
-              </p>
-              <SubmitButton type="button" onClick={handleCopyLink} style={{ backgroundColor: copied ? Colors.success : Colors.primary }}>
-                {copied ? 'Link Copied to Clipboard!' : 'Copy Guest Registration Link'}
-              </SubmitButton>
-            </InteractiveFormCard>
+            <InviteUserCard onInvite={handleInviteAction} />
+            <InviteGuestCard 
+              groupId={store.currentGroup.id} 
+              generateInviteLink={store.generateInviteLink} 
+            />
           </SideSectionColumn>
         </GroupDashboardLayout>
       )}
@@ -239,12 +204,13 @@ const NotificationGrid = styled.div`
   gap: 10px;
 `;
 
-// Fixed to background token to maintain text visibility inside notifications banner
 const NotificationItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: ${Colors.primary};
+  background-color: ${Colors.background};
+  border: 1px solid ${Colors.border};
+  color: ${Colors.textPrimary};
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
@@ -381,16 +347,6 @@ const GeofenceBadge = styled.div<{ $outside: boolean }>`
   background-color: ${({ $outside }) => ($outside ? Colors.errorLight : Colors.primaryLight)};
 `;
 
-const BannerFeedbackAlert = styled.div<{ $success: boolean }>`
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: ${({ $success }) => ($success ? Colors.success : Colors.error)};
-  background-color: ${({ $success }) => ($success ? Colors.primaryLight : Colors.errorLight)};
-`;
-
-/* ─── STYLES CREATED SPECIFICALLY FOR THE NEW MASTER BAR MAP ACTION BUTTON ─── */
 const TraceMapBarButton = styled.button`
   display: flex;
   align-items: center;

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { 
   collection, doc, setDoc, updateDoc, arrayUnion, arrayRemove, 
-  query, where, getDocs, onSnapshot, serverTimestamp, addDoc 
+  query, where, getDocs, onSnapshot, serverTimestamp, addDoc, orderBy, limit 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -22,13 +22,21 @@ export interface GroupMember {
   isOutsideGeofence: boolean;
 }
 
+export interface SearchedUser {
+  uid: string;
+  displayName: string;
+  username: string;
+}
+
 interface GroupState {
   currentGroup: { id: string; name: string; ownerId: string; members: string[] } | null;
   groupMembersProfiles: GroupMember[];
   notifications: GroupNotification[];
+  searchResults: SearchedUser[];
   isLoading: boolean;
   
   createGroup: (groupName: string, ownerId: string, ownerName: string, ownerUsername: string) => Promise<void>;
+  searchUsersByPrefix: (searchText: string) => Promise<void>;
   inviteUserByUsername: (username: string, fromUserId: string, fromUserName: string) => Promise<{ success: boolean; message: string }>;
   generateInviteLink: (groupId: string) => string;
   listenToGroupAndNotifications: (userId: string) => () => void;
@@ -39,6 +47,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   currentGroup: null,
   groupMembersProfiles: [],
   notifications: [],
+  searchResults: [],
   isLoading: false,
 
   createGroup: async (groupName, ownerId, ownerName, ownerUsername) => {
@@ -54,7 +63,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       
       await setDoc(groupRef, newGroup);
       
-      // Seed self inside user profiles register cache
       set({ 
         currentGroup: newGroup,
         groupMembersProfiles: [{ uid: ownerId, displayName: ownerName, username: ownerUsername, isOutsideGeofence: false }]
@@ -66,14 +74,51 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
+  // ✅ FIXED: Pointing directly to your "users" collection mapping
+  searchUsersByPrefix: async (searchText) => {
+    const queryText = searchText.trim().toLowerCase();
+    if (!queryText) {
+      set({ searchResults: [] });
+      return;
+    }
+
+    try {
+      // Directed query to search inside your "users" collection schema path
+      const userQuery = query(
+        collection(db, 'users'), 
+        where('username', '>=', queryText),
+        where('username', '<=', queryText + '\uf8ff'),
+        orderBy('username'),
+        limit(5)
+      );
+
+      const querySnap = await getDocs(userQuery);
+      const results: SearchedUser[] = [];
+      
+      querySnap.forEach((doc) => {
+        const data = doc.data();
+        results.push({
+          uid: data.uid || doc.id,
+          displayName: data.displayName || '',
+          username: data.username || ''
+        });
+      });
+
+      set({ searchResults: results });
+    } catch (err) {
+      console.error("Predictive search lookup failed:", err);
+    }
+  },
+
+  // ✅ FIXED: Pointing directly to your "users" collection mapping
   inviteUserByUsername: async (username, fromUserId, fromUserName) => {
     const cleanUsername = username.trim().toLowerCase();
     const group = get().currentGroup;
     if (!group) return { success: false, message: 'You must create a group first.' };
 
     try {
-      // 1. Find user by username property map query
-      const userQuery = query(collection(db, 'profiles'), where('username', '==', cleanUsername));
+      // Swapped target lookup index collection path parameter from 'profiles' to 'users'
+      const userQuery = query(collection(db, 'users'), where('username', '==', cleanUsername));
       const querySnap = await getDocs(userQuery);
 
       if (querySnap.empty) {
@@ -87,7 +132,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         return { success: false, message: 'User is already a member of this group.' };
       }
 
-      // 2. Insert functional in-app notification context payload
       await addDoc(collection(db, `users/${targetUserId}/notifications`), {
         type: 'invite',
         fromGroupName: group.name,
@@ -108,10 +152,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     return `${window.location.origin}/signup?groupInvite=${groupId}`;
   },
 
+  // ✅ FIXED: Gathering member profile metadata details safely from your "users" folder
   listenToGroupAndNotifications: (userId) => {
     set({ isLoading: true });
 
-    // 1. Listen to active incoming notifications feed channel live
     const notifQuery = query(collection(db, `users/${userId}/notifications`), where('status', '==', 'pending'));
     const unsubNotifs = onSnapshot(notifQuery, (snapshot) => {
       const notifs: GroupNotification[] = [];
@@ -121,7 +165,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       set({ notifications: notifs });
     });
 
-    // 2. Listen to active group membership channels live
     const groupQuery = query(collection(db, 'groups'), where('members', 'array-contains', userId));
     const unsubGroup = onSnapshot(groupQuery, async (snapshot) => {
       if (snapshot.empty) {
@@ -132,18 +175,18 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       const groupData = snapshot.docs[0].data() as any;
       set({ currentGroup: groupData });
 
-      // Fetch member profiles details asynchronously
       try {
         const membersProfiles: GroupMember[] = [];
         for (const mId of groupData.members) {
-          const profileSnap = await getDocs(query(collection(db, 'profiles'), where('uid', '==', mId)));
+          // Swapped data synchronization directory path target to "users" collection
+          const profileSnap = await getDocs(query(collection(db, 'users'), where('uid', '==', mId)));
           if (!profileSnap.empty) {
             const p = profileSnap.docs[0].data();
             membersProfiles.push({
               uid: mId,
               displayName: p.displayName,
               username: p.username,
-              isOutsideGeofence: false // Geofencing tracker will update this value later
+              isOutsideGeofence: false
             });
           }
         }
@@ -176,7 +219,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         }
       }
       
-      // Update invitation document processing state status token
       await updateDoc(notifRef, { status: accept ? 'accepted' : 'declined' });
     } catch (err) {
       console.error(err);

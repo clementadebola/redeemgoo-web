@@ -18,9 +18,12 @@ export interface UserProfile {
   photoURL?: string;
   savedPlaces?: string[];
   createdAt?: string;
+  tripsCount?: number;
+  rating?: string | number;
 }
 
 interface AuthState {
+  setUser: (user: User | null) => void; // Explicitly typed setter
   user: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
@@ -41,6 +44,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
   error: null,
+
+  // ✅ FIXED: Implemented the missing action setter method
+  setUser: (user) => set({ user }),
 
   initialize: () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -111,3 +117,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export { auth, db };

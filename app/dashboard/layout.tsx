@@ -1,13 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import styled from 'styled-components';
 import { Map, User, Home, LogOut } from 'lucide-react';
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
+// Firebase Engine Auth Handshakes
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase'; 
+import { useAuthStore } from '../store/authStore';
 
+// ✅ NEW COMPONENT IMPORT
+import LogoutModal from '../(auth)/logout/page';
+
+// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
 const LayoutContainer = styled.div`
   display: flex;
   height: 100vh;
@@ -15,13 +23,11 @@ const LayoutContainer = styled.div`
   background-color: #f8f9fa;
   overflow: hidden;
 
-  /* On mobile, stack layout elements vertically to accommodate the bottom bar */
   @media (max-width: 768px) {
     flex-direction: column;
   }
 `;
 
-/* DESKTOP SIDEBAR */
 const Sidebar = styled.aside`
   width: 260px;
   background-color: #1c1c1e;
@@ -32,7 +38,6 @@ const Sidebar = styled.aside`
   justify-content: space-between;
   flex-shrink: 0;
 
-  /* Completely hide sidebar view frame on mobile sizes */
   @media (max-width: 768px) {
     display: none;
   }
@@ -53,7 +58,6 @@ const AppTitle = styled.h2`
   letter-spacing: -0.5px;
 `;
 
-/* SHARED LINK STYLING FOR SIDEBAR */
 const NavLink = styled(Link)<{ $active: boolean }>`
   display: flex;
   align-items: center;
@@ -73,9 +77,31 @@ const NavLink = styled(Link)<{ $active: boolean }>`
   }
 `;
 
-/* MOBILE BOTTOM TAB BAR CONTAINER */
+// Converted to semantic button to handle synthetic overlay preventions seamlessly
+const NavButtonTrigger = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  color: #8e8e93;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #2c2c2e;
+    color: white;
+  }
+`;
+
 const MobileTabBar = styled.nav`
-  display: none; /* Default hidden on laptop monitors */
+  display: none;
   background-color: #1c1c1e;
   border-top: 1px solid #2c2c2e;
   height: 64px;
@@ -87,23 +113,40 @@ const MobileTabBar = styled.nav`
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding-bottom: env(safe-area-inset-bottom); /* Fixes iOS bottom home bar notch overlap */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 `;
 
-/* INDIVIDUAL MOBILE TAB BUTTON LINK */
 const MobileTabLink = styled(Link)<{ $active: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  color: ${({ $active }) => ($active ? '#10b981' : '#8e8e93')}; /* Highlight color on active mobile view */
+  color: ${({ $active }) => ($active ? '#10b981' : '#8e8e93')};
   text-decoration: none;
   font-size: 11px;
   font-weight: 500;
   flex: 1;
   height: 100%;
+  transition: color 0.2s ease;
+`;
+
+const MobileTabButtonTrigger = styled.button`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #8e8e93;
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+  font-family: inherit;
   transition: color 0.2s ease;
 `;
 
@@ -115,14 +158,70 @@ const MainContent = styled.main`
   height: 100%;
 `;
 
-// ─── COMPONENT LOGIC FRAME ──────────────────────────────────────────────────
+const VerificationLoaderOverlay = styled.div`
+  width: 100vw;
+  height: 100vh;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #8e8e93;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+`;
 
+// ─── COMPONENT ENTRY POINT PANEL ────────────────────────────────────────────
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [isVerifying, setIsVerifying] = useState(true);
+  // ✅ New layout overlay trigger switch
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const profileSnap = await getDoc(doc(db, 'profiles', firebaseUser.uid));
+          
+          if (profileSnap.exists()) {
+            const rawData = profileSnap.data();
+            
+            useAuthStore.setState({ 
+              user: firebaseUser,
+              profile: {
+                uid: rawData.uid ?? firebaseUser.uid,
+                displayName: rawData.displayName ?? '',
+                email: rawData.email ?? firebaseUser.email ?? '',
+                username: rawData.username ?? '',
+                ...rawData
+              } 
+            });
+          } else {
+            useAuthStore.setState({ user: firebaseUser });
+          }
+        } catch (error) {
+          console.error("Failed background layout profiles matching sync:", error);
+          useAuthStore.setState({ user: firebaseUser });
+        }
+      } else {
+        useAuthStore.setState({ user: null, profile: null });
+        router.replace('/login');
+      }
+      setIsVerifying(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  if (isVerifying) {
+    return <VerificationLoaderOverlay>Restoring session configuration tokens...</VerificationLoaderOverlay>;
+  }
 
   return (
     <LayoutContainer>
-      {/* 1. DESKTOP SIDEBAR VIEW RAIL (Hidden on mobile phones) */}
+      {/* 1. DESKTOP SIDEBAR VIEW RAIL */}
       <Sidebar>
         <NavGroup>
           <AppTitle>Redeem Go</AppTitle>
@@ -140,15 +239,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </NavLink>
         </NavGroup>
 
-        <NavLink href="/login" $active={false}>
+        {/* ✅ INTERCEPTED: Triggers modal instead of instant routing */}
+        <NavButtonTrigger type="button" onClick={() => setLogoutModalOpen(true)}>
           <LogOut size={20} /> Sign Out
-        </NavLink>
+        </NavButtonTrigger>
       </Sidebar>
 
       {/* 2. THE CHOSEN PAGE VIEW SCREEN PORTAL */}
       <MainContent>{children}</MainContent>
 
-      {/* 3. MOBILE RESPONSIVE BOTTOM TAB BAR (Hidden on desktop displays) */}
+      {/* 3. MOBILE RESPONSIVE BOTTOM TAB BAR */}
       <MobileTabBar>
         <MobileTabLink href="/dashboard" $active={pathname === '/dashboard'}>
           <Home size={22} />
@@ -165,11 +265,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span>Profile</span>
         </MobileTabLink>
 
-        <MobileTabLink href="/login" $active={false}>
+        {/* ✅ INTERCEPTED FOR MOBILE TOO */}
+        <MobileTabButtonTrigger type="button" onClick={() => setLogoutModalOpen(true)}>
           <LogOut size={22} />
           <span>Exit</span>
-        </MobileTabLink>
+        </MobileTabButtonTrigger>
       </MobileTabBar>
+
+      {/* ✅ UNIFIED LAYOUT OVERLAY DIALOG INJECTION */}
+      <LogoutModal isOpen={logoutModalOpen} onClose={() => setLogoutModalOpen(false)} />
     </LayoutContainer>
   );
 }
