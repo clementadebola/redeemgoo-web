@@ -1,5 +1,4 @@
-// lib/firebase.ts
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -12,12 +11,13 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app =
-  getApps().length === 0
-    ? initializeApp(firebaseConfig)
-    : getApps()[0];
+// Ensure we are inside a client browser context before spinning up the engine
+const app = typeof window !== 'undefined'
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
+  : null;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// ✅ SAFELY EXTRACTED: Provide placeholder stubs for SSR compilation that instantly swap to real engines in the browser
+export const auth = app ? getAuth(app) : (null as any);
+export const db = app ? getFirestore(app) : (null as any);
 
 export default app;

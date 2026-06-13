@@ -14,7 +14,7 @@ import { useAuthStore } from '../store/authStore';
 
 import LogoutModal from '../(auth)/logout/page';
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
+
 const LayoutContainer = styled.div`
   display: flex;
   height: 100vh;
@@ -168,7 +168,7 @@ const VerificationLoaderOverlay = styled.div`
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 `;
 
-// ─── COMPONENT ENTRY POINT PANEL ────────────────────────────────────────────
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();

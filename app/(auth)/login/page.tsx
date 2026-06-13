@@ -64,7 +64,6 @@ export default function LoginPage() {
   return (
     <Container>
       <Content onSubmit={handleLogin}>
-        {/* Top Navigation Brand Header - Exactly like your Signup page layout structure */}
         <Header>
           <BackButton href="/">
             <IoArrowBack size={18} color={Colors.textPrimary} />
@@ -77,13 +76,11 @@ export default function LoginPage() {
           </LogoRow>
         </Header>
 
-        {/* Text Section / Tagline Context Banner */}
         <TitleSection>
           <CardTitle>Welcome back</CardTitle>
           <CardSub>Sign in to continue navigating Redemption City with ease</CardSub>
         </TitleSection>
 
-        {/* Credentials Form Interaction Card */}
         <Card>
           {error && (
             <ErrorBanner>
@@ -146,7 +143,7 @@ export default function LoginPage() {
   );
 }
 
-// ─── STYLED COMPONENTS LAYOUT ADJUSTMENTS ───────────────────────────────────
+
 
 const Container = styled.main`
   min-height: 100vh;
@@ -157,7 +154,7 @@ const Container = styled.main`
   padding: ${Spacing.xl}px;
 `;
 
-// Converted into a semantic form component element wrapper
+
 const Content = styled.form`
   width: 100%;
   max-width: 440px;

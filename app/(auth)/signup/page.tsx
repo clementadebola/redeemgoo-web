@@ -11,7 +11,7 @@ import Input from '../../components/ui/Input';
 import { useAuthStore } from '../../store/authStore';
 import { Colors, Spacing } from '../../constants/theme';
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
+
 const ViewportContainer = styled.main`
   min-height: 100vh;
   width: 100vw;
@@ -148,7 +148,7 @@ const FooterLink = styled(Link)`
   &:hover { text-decoration: underline; }
 `;
 
-// ─── COMPONENT ENTRY POINT ──────────────────────────────────────────────────
+
 export default function SignupPage() {
   const router = useRouter();
   const { signUp, isLoading, error, clearError } = useAuthStore();
@@ -191,7 +191,7 @@ export default function SignupPage() {
   return (
     <ViewportContainer>
       <ContentWrapper>
-        {/* Navigation / Brand Header */}
+
         <Header>
           <BackButton href="/login">
             <ArrowLeft size={18} />
@@ -204,13 +204,12 @@ export default function SignupPage() {
           </LogoRow>
         </Header>
 
-        {/* Text Section */}
         <TitleSection>
           <Title>Create account</Title>
           <Subtitle>Join and navigate Redemption City</Subtitle>
         </TitleSection>
 
-        {/* Main form execution card block container */}
+
         <CardForm onSubmit={handleSignup}>
           {error && (
             <ErrorBanner>
@@ -273,7 +272,6 @@ export default function SignupPage() {
           />
         </CardForm>
 
-        {/* Footer Navigation block layout toggle */}
         <Footer>
           <FooterText>Already have an account?</FooterText>
           <FooterLink href="/login">Sign in</FooterLink>
