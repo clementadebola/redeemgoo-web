@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { X, Calendar, MapPin, Navigation } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../store/authStore';
+import { db } from "../../lib/firebase";
 
 const Colors = {
   primary: '#10b981',

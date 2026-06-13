@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import dynamic from "next/dynamic";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../../store/authStore";
+import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
 import { useGroupStore } from "../../store/groupStore";
 import { useLocationStore } from "../../store/locationStore";
