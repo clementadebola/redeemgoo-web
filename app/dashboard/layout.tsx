@@ -12,7 +12,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase'; 
 import { useAuthStore } from '../store/authStore';
 
-// ✅ NEW COMPONENT IMPORT
 import LogoutModal from '../(auth)/logout/page';
 
 // ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
@@ -77,7 +76,6 @@ const NavLink = styled(Link)<{ $active: boolean }>`
   }
 `;
 
-// Converted to semantic button to handle synthetic overlay preventions seamlessly
 const NavButtonTrigger = styled.button`
   display: flex;
   align-items: center;
@@ -176,14 +174,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   const [isVerifying, setIsVerifying] = useState(true);
-  // ✅ New layout overlay trigger switch
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const profileSnap = await getDoc(doc(db, 'profiles', firebaseUser.uid));
+          // ✅ FIXED: Shifted directory targeting pointer from 'profiles' to 'users' to align collection rules
+          const profileSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
           
           if (profileSnap.exists()) {
             const rawData = profileSnap.data();
@@ -239,7 +237,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </NavLink>
         </NavGroup>
 
-        {/* ✅ INTERCEPTED: Triggers modal instead of instant routing */}
         <NavButtonTrigger type="button" onClick={() => setLogoutModalOpen(true)}>
           <LogOut size={20} /> Sign Out
         </NavButtonTrigger>
@@ -265,14 +262,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span>Profile</span>
         </MobileTabLink>
 
-        {/* ✅ INTERCEPTED FOR MOBILE TOO */}
         <MobileTabButtonTrigger type="button" onClick={() => setLogoutModalOpen(true)}>
           <LogOut size={22} />
           <span>Exit</span>
         </MobileTabButtonTrigger>
       </MobileTabBar>
 
-      {/* ✅ UNIFIED LAYOUT OVERLAY DIALOG INJECTION */}
+      {/* ✅ FIXED: Unified toggle state mapping wrapper */}
       <LogoutModal isOpen={logoutModalOpen} onClose={() => setLogoutModalOpen(false)} />
     </LayoutContainer>
   );

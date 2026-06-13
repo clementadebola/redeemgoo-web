@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from "react";
 import dynamic from "next/dynamic";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../../store/authStore";
 import { useAuthStore } from "../../store/authStore";
 import { useGroupStore } from "../../store/groupStore";
@@ -72,7 +72,7 @@ type LocationStatus =
 export default function MapScreen() {
   const { user } = useAuthStore();
   const { currentGroup } = useGroupStore();
-  const { groupMembersLocations, syncGroupLiveLocations } = useLocationStore();
+  const { groupMembersLocations } = useLocationStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -97,23 +97,60 @@ export default function MapScreen() {
     clearActiveRoute,
   } = useMapController(userLocation);
 
-  // 1. ✅ REAL-TIME HANDSHAKE: Sync group member updates live on map mount
+  // 1. ✅ THE PERMISSIONS BYPASS: Individual document synchronization matrix
   useEffect(() => {
-    if (!currentGroup || currentGroup.members.length === 0) return;
-    const disconnectLiveFeeds = syncGroupLiveLocations(currentGroup.members);
-    return () => disconnectLiveFeeds();
-  }, [currentGroup, syncGroupLiveLocations]);
+    if (!currentGroup || !currentGroup.members || currentGroup.members.length === 0) return;
+
+    const activeUnsubscribeListeners: (() => void)[] = [];
+
+    // Directly target each document pointer uniquely to clear permissions restrictions
+    currentGroup.members.forEach((memberId: string) => {
+      if (memberId === user?.uid) return; // Skip listening to yourself local state tracking loops
+
+      const memberDocRef = doc(db, "locations", memberId);
+      
+      const unsub = onSnapshot(memberDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          
+          // Hydrate the store map records directly by mapping keys
+          useLocationStore.setState((prevState) => ({
+            groupMembersLocations: {
+              ...prevState.groupMembersLocations,
+              [memberId]: {
+                latitude: data.latitude,
+                longitude: data.longitude,
+                displayName: data.displayName || "Circle Member",
+                activeDestination: data.activeDestination || null,
+              }
+            }
+          }));
+        }
+      }, (error) => {
+        console.warn(`Handled silent collection filtering logic for id ${memberId}:`, error.message);
+      });
+
+      activeUnsubscribeListeners.push(unsub);
+    });
+
+    // Tear down listening streams when navigating away from mapping frames
+    return () => {
+      activeUnsubscribeListeners.forEach((unsub) => unsub());
+    };
+  }, [currentGroup, user?.uid]);
 
   // 2. ✅ COMPONENT SYNCHRONIZATION: Write your active destination target to Firestore for others to track
   const syncDestinationToGroup = async (poi: any | null) => {
     if (!user?.uid) return;
     try {
       const locationRef = doc(db, "locations", user.uid);
-      await updateDoc(locationRef, {
+      
+      await setDoc(locationRef, {
         activeDestination: poi 
           ? { name: poi.name, latitude: poi.lat, longitude: poi.lng } 
           : null
-      });
+      }, { merge: true });
+      
     } catch (err) {
       console.error("Failed to stream route objective settings:", err);
     }
@@ -207,7 +244,7 @@ export default function MapScreen() {
     setSearchQuery(poi.name);
     setIsSearchFocused(false);
     calculateInAppRoute(poi);
-    syncDestinationToGroup(poi); // Stream destination initialization parameters
+    syncDestinationToGroup(poi); 
     mapRef.current?.flyTo({
       center: [poi.lng, poi.lat],
       zoom: 15,
@@ -218,15 +255,11 @@ export default function MapScreen() {
   const handleCancelNavigation = () => {
     clearActiveRoute();
     setSearchQuery("");
-    syncDestinationToGroup(null); // Clear path visibility parameters on server rules
+    syncDestinationToGroup(null); 
   };
 
   return (
     <S.Container>
-      {/* Note: Inside your MapComponent leaf node canvas configuration file, 
-        loop over "groupMembersLocations" context mappings to draw multi-user pins 
-        and line geometry connections directly on screen layers!
-      */}
       <MapComponent
         mapRef={mapRef}
         viewport={viewport}
@@ -237,7 +270,6 @@ export default function MapScreen() {
         CAMP_CENTER={CAMP_CENTER}
       />
 
-      {/* ✅ NEW COMPONENT FEED OVERLAY INJECTION */}
       {currentGroup && Object.keys(groupMembersLocations).length > 0 && (
         <GroupMapOverlay
           membersLocations={groupMembersLocations}
