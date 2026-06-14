@@ -39,28 +39,30 @@ export default function GroupWidget({ userGroups, currentGroup, setCurrentGroup,
   const visibleGroups = isGroupsExpanded ? userGroups : userGroups.slice(0, 2);
   const hasMoreGroups = userGroups.length > 2;
 
-  // ✅ CENTRALIZED CREATION NAVIGATION CONSTANT: Change this single string to match your exact directory layout route!
- const CREATE_GROUP_ROUTE = '/dashboard/groups?action=create'; 
+  const CREATE_GROUP_ROUTE = '/dashboard/groups?action=create'; 
 
   return (
     <BentoWidgetCard>
       <WidgetHeaderRow>
         <HeaderTitleCluster>
           <Users size={18} color={Colors.primary} />
-          <WidgetHeading>Tracking Pipelines ({userGroups.length})</WidgetHeading>
+          {/* ✅ CHANGED: Simplified wording from "Tracking Pipelines" to "Active Circles" */}
+          <WidgetHeading>Active Circles ({userGroups.length})</WidgetHeading>
         </HeaderTitleCluster>
         
-        {/* ✅ FIXED: Routes the user straight to the Group Creation layout step screen */}
+        {/* Optimized responsive FAB button */}
         {userGroups.length > 0 && (
-          <CreateCircleButton onClick={() => router.push(CREATE_GROUP_ROUTE)}>
-            <Plus size={14} />
-            <span>Create Group</span>
+          <CreateCircleButton 
+            onClick={() => router.push(CREATE_GROUP_ROUTE)}
+            title="Create a new tracking circle"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            <span className="btn-text">Create Group</span>
           </CreateCircleButton>
         )}
       </WidgetHeaderRow>
 
       {userGroups.length === 0 ? (
-        /* ✅ FIXED: Re-routed empty state placeholder click trigger straight to Creation route */
         <EmptyGroupPlaceholder onClick={() => router.push(CREATE_GROUP_ROUTE)}>
           <span className="emoji">👥</span>
           <p>You have not joined any tracking circles yet. Tap here to set up a brand new tracking group.</p>
@@ -77,7 +79,6 @@ export default function GroupWidget({ userGroups, currentGroup, setCurrentGroup,
                 $selected={isSelectedActive}
                 onClick={() => {
                   setCurrentGroup(group);
-                  // Mobile view fallback handling setup details dashboard
                   if (window.innerWidth <= 768) {
                     router.push('/dashboard/groups');
                   }
@@ -104,7 +105,6 @@ export default function GroupWidget({ userGroups, currentGroup, setCurrentGroup,
                   </PipelineMetaInfo>
                 </PipelineLeftBlock>
                 
-                {/* Desktop layout dual-action docks */}
                 <SelectionActionDock>
                   <ActionButton 
                     $variant="map"
@@ -136,6 +136,7 @@ export default function GroupWidget({ userGroups, currentGroup, setCurrentGroup,
         </GroupCardsStackGrid>
       )}
 
+      {/* ✅ FIXED: Changed old `isExpanded` variable to use the correct `isGroupsExpanded` parameter state */}
       {hasMoreGroups && (
         <ShowMoreToggleAction onClick={() => setIsGroupsExpanded(!isGroupsExpanded)}>
           <span>{isGroupsExpanded ? "Collapse List" : `Show More (${userGroups.length - 2} hidden)`}</span>
@@ -151,11 +152,15 @@ const BentoWidgetCard = styled.div`
   background: ${Colors.white};
   border: 1px solid ${Colors.border};
   border-radius: 24px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.01);
+
+  @media(min-width: 480px) {
+    padding: 20px;
+  }
 `;
 
 const WidgetHeaderRow = styled.div`
@@ -163,12 +168,14 @@ const WidgetHeaderRow = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  gap: 12px;
 `;
 
 const HeaderTitleCluster = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 `;
 
 const WidgetHeading = styled.h3`
@@ -176,49 +183,85 @@ const WidgetHeading = styled.h3`
   font-weight: 700;
   color: ${Colors.textPrimary};
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const CreateCircleButton = styled.button`
   background: ${Colors.primaryLight};
   color: ${Colors.primary};
   border: none;
-  padding: 6px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 
-  &:hover { opacity: 0.85; transform: translateY(-0.5px); }
-  &:active { transform: translateY(0); }
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 0;
+
+  .btn-text {
+    display: none;
+  }
+
+  &:hover { 
+    background-color: ${Colors.primary};
+    color: ${Colors.white};
+    transform: scale(1.05); 
+  }
+  
+  &:active { 
+    transform: scale(0.95); 
+  }
+
+  @media(min-width: 480px) {
+    width: auto;
+    height: auto;
+    border-radius: 10px;
+    padding: 6px 12px;
+    gap: 4px;
+    
+    .btn-text {
+      display: inline;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    
+    &:hover {
+      background-color: ${Colors.primaryLight};
+      color: ${Colors.primary};
+      opacity: 0.85;
+      transform: translateY(-0.5px);
+    }
+  }
 `;
 
 const GroupCardsStackGrid = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 `;
 
 const PipelineRowCard = styled.div<{ $selected: boolean }>`
   background-color: ${({ $selected }) => ($selected ? Colors.primaryLight : '#f8f9fa')};
   border: 1px solid ${({ $selected }) => ($selected ? Colors.primary : Colors.border)};
   border-radius: 16px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: 14px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
   &:hover {
     transform: translateY(-1px);
     background-color: ${({ $selected }) => ($selected ? Colors.primaryLight : '#f2f2f7')};
-    box-shadow: 0 6px 16px rgba(0,0,0,0.03);
   }
 
   @media(min-width: 768px) {
@@ -247,23 +290,25 @@ const PipelineMetaInfo = styled.div`
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
   
   .title-cluster {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
   
   .pipeline-title { 
-    font-size: 15px; 
+    font-size: 14px; 
     font-weight: 700; 
     color: ${Colors.textPrimary};
-    line-height: 1.2;
+    line-height: 1.3;
+    word-break: break-word;
   }
   
   .pipeline-count { 
-    font-size: 12px; 
+    font-size: 11px; 
     color: ${Colors.textSecondary}; 
     font-weight: 600; 
   }
@@ -272,10 +317,10 @@ const PipelineMetaInfo = styled.div`
 const RoleBadge = styled.div<{ $type: 'creator' | 'member' }>`
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 9px;
+  gap: 3px;
+  font-size: 8px;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 6px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
