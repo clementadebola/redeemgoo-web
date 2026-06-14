@@ -23,7 +23,7 @@ export interface UserProfile {
 }
 
 interface AuthState {
-  setUser: (user: User | null) => void; // Explicitly typed setter
+  setUser: (user: User | null) => void;
   user: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
@@ -45,10 +45,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
   error: null,
 
-  // ✅ FIXED: Implemented the missing action setter method
   setUser: (user) => set({ user }),
 
   initialize: () => {
+    // ✅ SSR GUARD: Do absolutely nothing if evaluated on the server side
+    if (typeof window === "undefined" || !auth) return () => {};
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await get().fetchProfile(user.uid);
@@ -59,6 +61,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchProfile: async (uid: string) => {
+    if (typeof window === "undefined" || !db) return;
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
@@ -71,6 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, fullName, username) => {
+    if (!auth || !db) throw new Error("Firebase services are uninitialized.");
     set({ isLoading: true, error: null });
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -94,6 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signIn: async (email, password) => {
+    if (!auth) throw new Error("Firebase Auth is uninitialized.");
     set({ isLoading: true, error: null });
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -110,6 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    if (!auth) return;
     set({ isLoading: true });
     await signOut(auth);
     set({ user: null, profile: null, isLoading: false });
@@ -118,4 +124,4 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => set({ error: null }),
 }));
 
-export { auth, db };
+// ❌ FIXED: Removed the direct primitive re-exports that were breaking the client hydration tree!

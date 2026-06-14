@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,13 +11,26 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Ensure we are inside a client browser context before spinning up the engine
-const app = typeof window !== 'undefined'
+// Check for client context safely
+const isClient = typeof window !== 'undefined';
+
+const app = isClient
   ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
   : null;
 
-// ✅ SAFELY EXTRACTED: Provide placeholder stubs for SSR compilation that instantly swap to real engines in the browser
-export const auth = app ? getAuth(app) : (null as any);
-export const db = app ? getFirestore(app) : (null as any);
+// ✅ SAFELY ENCAPSULATED: Export wrapper execution stubs that return instances only when window initializes
+export const getClientAuth = (): Auth => {
+  if (!app) throw new Error("Firebase Auth accessed on server side prematurely.");
+  return getAuth(app);
+};
+
+export const getClientDb = (): Firestore => {
+  if (!app) throw new Error("Firebase Firestore accessed on server side prematurely.");
+  return getFirestore(app);
+};
+
+// Fallbacks for direct primitive references to maintain backward compatibility safely
+export const auth = isClient && app ? getAuth(app) : (null as any);
+export const db = isClient && app ? getFirestore(app) : (null as any);
 
 export default app;

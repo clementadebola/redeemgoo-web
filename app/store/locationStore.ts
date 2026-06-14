@@ -102,7 +102,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   },
 
   startTracking: async (userId: string) => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !db) return;
     if (watchId !== null) return;
 
     const granted = get().hasPermission || (await get().requestPermission());
@@ -110,7 +110,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
     set({ isTracking: true });
 
-    // Enclose tracker instantiation in a reusable function to handle adaptive accuracy downgrades
     const executeWatch = (useHighAccuracy: boolean) => {
       return navigator.geolocation.watchPosition(
         async (position) => {
@@ -149,15 +148,13 @@ export const useLocationStore = create<LocationState>((set, get) => ({
           }
         },
         (error) => {
-          // ✅ FIXED: Explicitly print string parameters to read real error messages instead of an empty {}
           console.warn(`Location tracking warning (Code ${error.code}): ${error.message}`);
 
-          // ✅ ADAPTIVE FALLBACK: If hardware fails high accuracy or times out, degrade to base wifi tower tracking automatically
           if (error.code === error.TIMEOUT && useHighAccuracy) {
             console.log("GPS Hardware timed out. Attempting tower/wifi triangulation mesh...");
             get().stopTracking();
             set({ isTracking: true });
-            watchId = executeWatch(false); // Re-run with high accuracy disabled
+            watchId = executeWatch(false);
           } else if (error.code === error.PERMISSION_DENIED) {
             set({ hasPermission: false, permissionDenied: true, isTracking: false });
             get().stopTracking();
@@ -165,8 +162,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         },
         {
           enableHighAccuracy: useHighAccuracy,
-          maximumAge: 10000, // Loosen cache boundaries to 10 seconds to reduce browser overhead
-          timeout: 12000,    // Allow a safer 12-second handshake buffer
+          maximumAge: 10000,
+          timeout: 12000,
         }
       );
     };
@@ -183,7 +180,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   },
 
   syncGroupLiveLocations: (memberIds: string[]) => {
-    if (typeof window === "undefined" || memberIds.length === 0) return () => {};
+    // ✅ SSR SAFE GUARD: Bails safely if Firestore hasn't initialized in client window scope yet
+    if (typeof window === "undefined" || !db || memberIds.length === 0) return () => {};
 
     const unsubscribes: (() => void)[] = [];
 
@@ -224,6 +222,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   setMapRegion: (region) => set({ mapRegion: region }),
 
   watchOtherUser: (userId: string, callback: (loc: Coordinate) => void) => {
+    if (typeof window === "undefined" || !db) return () => {};
     const unsubscribe = onSnapshot(
       doc(db, "locations", userId),
       (snapshot) => {
