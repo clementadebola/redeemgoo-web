@@ -6,9 +6,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { POIS } from '../../constants/mapData';
 
-// Inject your access token directly into the official package configuration
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
-
 
 const MapContainer = styled.div`
   width: 100%;
@@ -20,35 +18,15 @@ const MapContainer = styled.div`
   right: 0;
 `;
 
-const MarkerWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
-
-const MarkerIcon = styled.div`
-  font-size: 20px;
-  cursor: pointer;
-`;
-
-const MarkerLabel = styled.span`
-  background: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  font-weight: 600;
-  white-space: nowrap;
-`;
-
 interface MapComponentProps {
-  mapRef: React.RefObject<any>; // Tracks the raw mapboxgl.Map instance
+  mapRef: React.RefObject<any>;
   viewport: { latitude: number; longitude: number; zoom: number };
   setViewport: React.Dispatch<React.SetStateAction<{ latitude: number; longitude: number; zoom: number }>>;
   locationStatus: string;
   activeRoute: any;
   routeCoords: [number, number][];
   CAMP_CENTER: { latitude: number; longitude: number };
+  is3D: boolean; // ✅ Extrusion parameters listener
 }
 
 export default function MapComponent({
@@ -58,26 +36,29 @@ export default function MapComponent({
   activeRoute,
   routeCoords,
   CAMP_CENTER,
+  is3D,
 }: MapComponentProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
-  // 1. Initialize Core Map Instance
+  // 1. Core Map Initialization Loop
   useEffect(() => {
     if (!containerRef.current) return;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/light-v11', // Optimized, premium baseline vector for clean 3D extrusion contrasts
       center: [viewport.longitude, viewport.latitude],
       zoom: viewport.zoom,
+      pitch: is3D ? 60 : 0,
+      bearing: is3D ? -15 : 0,
+      antialias: true // Smooths aliased jaggies on angled edges
     });
 
-    // Save map instance reference so parent controllers can use flyTo mechanisms
     (mapRef as any).current = map;
 
-    // Handle polyline route injection on initialization loads
     map.on('load', () => {
+      // Add standard route layer source
       map.addSource('route', {
         type: 'geojson',
         data: {
@@ -94,16 +75,58 @@ export default function MapComponent({
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': '#10B981', 'line-width': 5 },
       });
+
+      // ✅ INJECT 3D SKY ATMOSPHERE GRID FOGS
+      if (!map.getSource('mapbox-dem')) {
+        map.addSource('mapbox-dem', {
+          type: 'raster-dem',
+          url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+          tileSize: 512
+        });
+        map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.1 });
+      }
+
+      // ✅ INJECT VECTOR 3D FILL-EXTRUSION LAYER
+      const layers = map.getStyle().layers;
+      const labelLayerId = layers?.find(
+        (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
+      )?.id;
+
+      map.addLayer(
+        {
+          id: '3d-buildings',
+          source: 'composite',
+          'source-layer': 'building',
+          filter: ['==', 'extrude', 'true'],
+          type: 'fill-extrusion',
+          minzoom: 13,
+          paint: {
+            'fill-extrusion-color': '#e3e3e9',
+            // Smoothly morph extrusion heights based on proximity scaling zoom factors
+            'fill-extrusion-height': [
+              'interpolate', ['linear'], ['zoom'],
+              13, 0,
+              14.5, ['get', 'height']
+            ],
+            'fill-extrusion-base': [
+              'interpolate', ['linear'], ['zoom'],
+              13, 0,
+              14.5, ['get', 'min_height']
+            ],
+            'fill-extrusion-opacity': 0.8
+          }
+        },
+        labelLayerId
+      );
     });
 
     return () => map.remove();
   }, []);
 
-  // 2. Watch and Apply Real-Time Route Coordinate Updates
+  // 2. Watch routing geometry
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-
     const source = map.getSource('route') as mapboxgl.GeoJSONSource;
     if (source) {
       source.setData({
@@ -114,57 +137,42 @@ export default function MapComponent({
     }
   }, [routeCoords]);
 
-  // 3. React to Changing Viewport Coordinate Shifts
+  // 3. Render HTML Custom DOM Pin Badges cleanly on layer slots
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    map.jumpTo({
-      center: [viewport.longitude, viewport.latitude],
-      zoom: viewport.zoom,
-    });
-  }, [viewport.latitude, viewport.longitude, viewport.zoom]);
-
-  // 4. Render Camp and POI Pins directly into Map DOM Layers
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    // Flush and reset stale map marker instances safely
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    // Fallback Core Destination City Pin
     if (locationStatus === 'outside' && !activeRoute) {
       const el = document.createElement('div');
-      el.style.fontSize = '24px';
+      el.style.fontSize = '26px';
+      el.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))';
       el.innerText = '📍';
 
       const campMarker = new mapboxgl.Marker({ element: el })
         .setLngLat([CAMP_CENTER.longitude, CAMP_CENTER.latitude])
         .addTo(map);
-
       markersRef.current.push(campMarker);
     }
 
-    // Mount Active City Points of Interest
     POIS.forEach((poi) => {
       const el = document.createElement('div');
-      el.className = 'custom-campus-marker';
+      el.style.cursor = 'pointer';
 
-      // Create a small isolated React tree for styling the marker
       const markerRoot = document.createElement('div');
       markerRoot.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center;">
-          <div style="font-size: 20px; cursor: pointer;">🏢</div>
-          <span style="background: white; color: #1c1c1e; padding: 2px 6px; border-radius: 4px; font-size: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); font-weight: 600; white-space: nowrap;">
+        <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.06));">
+          <div style="font-size: 22px; transform: scale(1); transition: transform 0.2s;">🏢</div>
+          <span style="background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); color: #1c1c1e; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; border: 1px solid rgba(0,0,0,0.04); white-space: nowrap; margin-top: 2px;">
             ${poi.name}
           </span>
         </div>
       `;
       el.appendChild(markerRoot);
 
-      const poiMarker = new mapboxgl.Marker({ element: el })
+      const poiMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([poi.lng, poi.lat])
         .addTo(map);
 

@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -16,6 +10,8 @@ import { useLocationStore } from "../../store/locationStore";
 import { useMapController } from "../../hooks/useMapController";
 import { POIS } from "../../constants/mapData";
 import GroupMapOverlay from "../../components/group/GroupMapOverlay";
+import NavigationHud from "../../components/map/NavigationHudCard"; 
+import { Layers, Cuboid as Cube } from "lucide-react"; // Import high-end layout icons
 import * as S from "./MapScreenStyles"; 
 
 const MapComponent = dynamic(
@@ -36,12 +32,7 @@ const CAMP_BOUNDS = {
 };
 const CAMP_CENTER = { latitude: 6.4531, longitude: 3.3958 };
 
-function haversineMetres(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
+function haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const toRad = (v: number) => (v * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -61,13 +52,7 @@ function isInsideCamp(lat: number, lng: number): boolean {
   );
 }
 
-type LocationStatus =
-  | "idle"
-  | "requesting"
-  | "inside"
-  | "outside"
-  | "denied"
-  | "unavailable";
+type LocationStatus = "idle" | "requesting" | "inside" | "outside" | "denied" | "unavailable";
 
 export default function MapScreen() {
   const { user } = useAuthStore();
@@ -77,6 +62,7 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+  const [is3D, setIs3D] = useState(false); // ✅ Shared State for 2D/3D toggle
   const [userLocation, setUserLocation] = useState({
     latitude: CAMP_CENTER.latitude,
     longitude: CAMP_CENTER.longitude,
@@ -97,23 +83,19 @@ export default function MapScreen() {
     clearActiveRoute,
   } = useMapController(userLocation);
 
-  // 1. ✅ THE PERMISSIONS BYPASS: Individual document synchronization matrix
+  // 1. Live location synchronizer matrix
   useEffect(() => {
     if (!currentGroup || !currentGroup.members || currentGroup.members.length === 0) return;
 
     const activeUnsubscribeListeners: (() => void)[] = [];
 
-    // Directly target each document pointer uniquely to clear permissions restrictions
     currentGroup.members.forEach((memberId: string) => {
-      if (memberId === user?.uid) return; // Skip listening to yourself local state tracking loops
+      if (memberId === user?.uid) return; 
 
       const memberDocRef = doc(db, "locations", memberId);
-      
       const unsub = onSnapshot(memberDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          
-          // Hydrate the store map records directly by mapping keys
           useLocationStore.setState((prevState) => ({
             groupMembersLocations: {
               ...prevState.groupMembersLocations,
@@ -133,24 +115,17 @@ export default function MapScreen() {
       activeUnsubscribeListeners.push(unsub);
     });
 
-    // Tear down listening streams when navigating away from mapping frames
-    return () => {
-      activeUnsubscribeListeners.forEach((unsub) => unsub());
-    };
+    return () => activeUnsubscribeListeners.forEach((unsub) => unsub());
   }, [currentGroup, user?.uid]);
 
-  // 2. ✅ COMPONENT SYNCHRONIZATION: Write your active destination target to Firestore for others to track
+  // 2. Active destination channel streamer
   const syncDestinationToGroup = async (poi: any | null) => {
     if (!user?.uid) return;
     try {
       const locationRef = doc(db, "locations", user.uid);
-      
       await setDoc(locationRef, {
-        activeDestination: poi 
-          ? { name: poi.name, latitude: poi.lat, longitude: poi.lng } 
-          : null
+        activeDestination: poi ? { name: poi.name, latitude: poi.lat, longitude: poi.lng } : null
       }, { merge: true });
-      
     } catch (err) {
       console.error("Failed to stream route objective settings:", err);
     }
@@ -178,16 +153,7 @@ export default function MapScreen() {
         const inside = isInsideCamp(latitude, longitude);
         setLocationStatus(inside ? "inside" : "outside");
         if (!inside) {
-          setDistanceFromCamp(
-            Math.round(
-              haversineMetres(
-                latitude,
-                longitude,
-                CAMP_CENTER.latitude,
-                CAMP_CENTER.longitude,
-              ),
-            ),
-          );
+          setDistanceFromCamp(Math.round(haversineMetres(latitude, longitude, CAMP_CENTER.latitude, CAMP_CENTER.longitude)));
           setViewport({
             latitude: (latitude + CAMP_CENTER.latitude) / 2,
             longitude: (longitude + CAMP_CENTER.longitude) / 2,
@@ -202,9 +168,7 @@ export default function MapScreen() {
     );
   }, []);
 
-  useEffect(() => {
-    requestUserLocation();
-  }, [requestUserLocation]);
+  useEffect(() => { requestUserLocation(); }, [requestUserLocation]);
 
   const filteredPois = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -222,20 +186,8 @@ export default function MapScreen() {
       .filter(({ score }) => score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        return (
-          haversineMetres(
-            userLocation.latitude,
-            userLocation.longitude,
-            a.poi.lat,
-            a.poi.lng,
-          ) -
-          haversineMetres(
-            userLocation.latitude,
-            userLocation.longitude,
-            b.poi.lat,
-            b.poi.lng,
-          )
-        );
+        return haversineMetres(userLocation.latitude, userLocation.longitude, a.poi.lat, a.poi.lng) -
+               haversineMetres(userLocation.latitude, userLocation.longitude, b.poi.lat, b.poi.lng);
       })
       .map(({ poi }) => poi);
   }, [searchQuery, userLocation]);
@@ -247,8 +199,10 @@ export default function MapScreen() {
     syncDestinationToGroup(poi); 
     mapRef.current?.flyTo({
       center: [poi.lng, poi.lat],
-      zoom: 15,
-      duration: 2000,
+      zoom: is3D ? 16.5 : 15.5,
+      pitch: is3D ? 60 : 0,
+      bearing: is3D ? -10 : 0,
+      duration: 2200,
     });
   };
 
@@ -256,6 +210,19 @@ export default function MapScreen() {
     clearActiveRoute();
     setSearchQuery("");
     syncDestinationToGroup(null); 
+  };
+
+  // ✅ Interactive Camera Projection Toggler
+  const handleToggle3D = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (is3D) {
+      map.flyTo({ pitch: 0, bearing: 0, zoom: 14.5, duration: 1200 });
+    } else {
+      map.flyTo({ pitch: 60, bearing: -15, zoom: 16.5, duration: 1200 });
+    }
+    setIs3D(!is3D);
   };
 
   return (
@@ -268,7 +235,14 @@ export default function MapScreen() {
         activeRoute={activeRoute}
         routeCoords={formattedRouteCoords}
         CAMP_CENTER={CAMP_CENTER}
+        is3D={is3D} // ✅ Send down parameter state changes
       />
+
+      {/* ✅ PREMIUM 2D/3D VIEWER TOGGLE FAB CONTROL */}
+      <S.ProjectionFab onClick={handleToggle3D} $is3D={is3D}>
+        {is3D ? <Layers size={16} /> : <Cube size={16} />}
+        <span>{is3D ? "2D Top View" : "3D Architecture"}</span>
+      </S.ProjectionFab>
 
       {currentGroup && Object.keys(groupMembersLocations).length > 0 && (
         <GroupMapOverlay
@@ -278,7 +252,8 @@ export default function MapScreen() {
           onFocusMember={(lat, lng) => {
             mapRef.current?.flyTo({
               center: [lng, lat],
-              zoom: 16,
+              zoom: is3D ? 17 : 16,
+              pitch: is3D ? 60 : 0,
               duration: 1200,
             });
           }}
@@ -297,8 +272,7 @@ export default function MapScreen() {
             <div>
               <S.BannerTitle>Outside Redemption City</S.BannerTitle>
               <S.BannerSub>
-                ~{distanceFromCamp ? (distanceFromCamp / 1000).toFixed(1) : "?"}{" "}
-                km away · Select a destination below to navigate
+                ~{distanceFromCamp ? (distanceFromCamp / 1000).toFixed(1) : "?"} km away · Select a destination below
               </S.BannerSub>
             </div>
           </S.LocationBanner>
@@ -313,17 +287,15 @@ export default function MapScreen() {
           <S.LocationBanner $type="error" onClick={requestUserLocation}>
             <span style={{ fontSize: "16px" }}>⚠️</span>
             <S.BannerText>
-              {locationStatus === "denied"
-                ? "Location denied · Click to retry"
-                : "Location unavailable · Click to retry"}
+              {locationStatus === "denied" ? "Location denied · Click to retry" : "Location unavailable · Click to retry"}
             </S.BannerText>
           </S.LocationBanner>
         )}
       </S.BannerContainer>
 
       <S.SearchContainer>
-        <S.SearchBarWrapper>
-          <span style={{ fontSize: "16px", marginRight: "8px" }}>🔍</span>
+        <S.SearchBarWrapper $isFocused={isSearchFocused}>
+          <span className="search-icon">🔍</span>
           <S.SearchInput
             type="text"
             placeholder="Search halls, banks, streets, auditoriums..."
@@ -336,29 +308,20 @@ export default function MapScreen() {
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
           />
           {searchQuery.length > 0 && (
-            <S.ClearInputButton onClick={handleCancelNavigation}>
-              ✕
-            </S.ClearInputButton>
+            <S.ClearInputButton onClick={handleCancelNavigation}>✕</S.ClearInputButton>
           )}
         </S.SearchBarWrapper>
+        
         {isSearchFocused && filteredPois.length > 0 && (
           <S.SuggestionsMenu>
             {filteredPois.map((item) => (
-              <S.SuggestionRow
-                key={item.id}
-                onMouseDown={() => handleSelectLocation(item)}
-              >
+              <S.SuggestionRow key={item.id} onMouseDown={() => handleSelectLocation(item)}>
                 <S.SuggestionLeft>
                   <S.SuggestionName>{item.name}</S.SuggestionName>
                   <S.SuggestionCategory>{item.category}</S.SuggestionCategory>
                 </S.SuggestionLeft>
                 <S.SuggestionDist>
-                  {haversineMetres(
-                    userLocation.latitude,
-                    userLocation.longitude,
-                    item.lat,
-                    item.lng,
-                  ) < 1000
+                  {haversineMetres(userLocation.latitude, userLocation.longitude, item.lat, item.lng) < 1000
                     ? `${Math.round(haversineMetres(userLocation.latitude, userLocation.longitude, item.lat, item.lng))} m away`
                     : `${(haversineMetres(userLocation.latitude, userLocation.longitude, item.lat, item.lng) / 1000).toFixed(1)} km away`}
                 </S.SuggestionDist>
@@ -370,41 +333,20 @@ export default function MapScreen() {
 
       {loadingRoute && (
         <S.LoaderContainer>
+          <div className="spinner" />
           <span>Finding best route...</span>
         </S.LoaderContainer>
       )}
 
       <S.UIOverlayContainer>
         {activeRoute ? (
-          <S.HudCard>
-            <S.HudLabel>NAVIGATING TO CAMPUS</S.HudLabel>
-            <S.HudTitle>{activeRoute.destinationName}</S.HudTitle>
-            <S.HudMetricsRow>
-              <S.HudMetricBlock>
-                <S.HudMetricLabel>Distance</S.HudMetricLabel>
-                <S.HudMetricValue>{activeRoute.distance}</S.HudMetricValue>
-              </S.HudMetricBlock>
-              <S.HudDivider />
-              <S.HudMetricBlock>
-                <S.HudMetricLabel>Est. Time</S.HudMetricLabel>
-                <S.HudMetricValue>{activeRoute.duration}</S.HudMetricValue>
-              </S.HudMetricBlock>
-            </S.HudMetricsRow>
-            <S.CancelButton onClick={handleCancelNavigation}>
-              End Navigation
-            </S.CancelButton>
-          </S.HudCard>
+          <NavigationHud activeRoute={activeRoute} onCancel={handleCancelNavigation} />
         ) : (
           <S.CarouselContainer>
-            <S.CarouselHeaderTitle>
-              Explore Redemption City
-            </S.CarouselHeaderTitle>
+            <S.CarouselHeaderTitle>Explore Redemption City</S.CarouselHeaderTitle>
             <S.CarouselScroll>
               {POIS.map((poi) => (
-                <S.PoiCard
-                  key={poi.id}
-                  onClick={() => handleSelectLocation(poi)}
-                >
+                <S.PoiCard key={poi.id} onClick={() => handleSelectLocation(poi)}>
                   <S.PoiCategory>{poi.category.toUpperCase()}</S.PoiCategory>
                   <S.PoiName>{poi.name}</S.PoiName>
                   <S.PoiAction>Tap to Route →</S.PoiAction>
@@ -415,7 +357,7 @@ export default function MapScreen() {
         )}
       </S.UIOverlayContainer>
 
-      <S.MyLocationFab onClick={requestUserLocation}>◎</S.MyLocationFab>
+      <S.MyLocationFab onClick={requestUserLocation} title="Recenter Location">◎</S.MyLocationFab>
     </S.Container>
   );
 }
