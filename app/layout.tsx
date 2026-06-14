@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import StyledComponentsRegistry from "./registry"; // Add a registry provider for NextJS 13+ SSR
+import StyledComponentsRegistry from "./registry"; 
 import "./globals.css";
 
 const geistSans = Geist({
