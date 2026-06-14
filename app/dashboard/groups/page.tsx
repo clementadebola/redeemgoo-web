@@ -2,16 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // ✅ Added search params hook
 import { 
   Users, Check, X, Bell, UserCheck, 
-  ShieldAlert, MapPin, UserCheck2, ArrowRight 
+  ShieldAlert, MapPin, UserCheck2, ArrowRight, ArrowLeft 
 } from 'lucide-react';
 
 import { useAuthStore } from '../../store/authStore';
 import { useGroupStore } from '../../store/groupStore';
 
-// Modular Component Imports
 import InviteUserCard from './InviteUserCard';
 import InviteGuestCard from './InviteGuestCard';
 
@@ -30,10 +29,15 @@ const Colors = {
 
 export default function GroupsManagerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile } = useAuthStore();
   const store = useGroupStore();
 
   const [groupName, setGroupName] = useState('');
+
+  // ✅ NEW CHECK: Detects if the current URL context explicitly asks to mount the group creation tool
+  // Matches '/dashboard/groups?action=create' or similar explicit path handlers
+  const isCreationMode = searchParams.get('action') === 'create';
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -41,10 +45,15 @@ export default function GroupsManagerPage() {
     return () => disconnectStream();
   }, [user?.uid]);
 
-  const handleCreateGroup = (e: React.FormEvent) => {
+  const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupName.trim() || !user?.uid || !profile) return;
-    store.createGroup(groupName.trim(), user.uid, profile.displayName, profile.username);
+    
+    await store.createGroup(groupName.trim(), user.uid, profile.displayName, profile.username);
+    setGroupName('');
+    
+    // Once created, clear the action query parameters and drop them back to home dashboard frames
+    router.push('/dashboard');
   };
 
   const handleInviteAction = async (targetUsername: string) => {
@@ -57,7 +66,7 @@ export default function GroupsManagerPage() {
   return (
     <ContainerWrapper>
       {/* ─── NOTIFICATION INBOX PANEL SECTION ─── */}
-      {store.notifications.length > 0 && (
+      {store.notifications.length > 0 && !isCreationMode && (
         <InboxCard>
           <SectionHeading style={{ display: 'flex', alignItems: 'center', gap: '8px', color: Colors.primary }}>
             <Bell size={18} /> Dynamic Invitation Alerts ({store.notifications.length})
@@ -88,10 +97,19 @@ export default function GroupsManagerPage() {
         </InboxCard>
       )}
 
-      {/* ─── GROUP STATUS ENGINE CONDITIONAL ROUTER ─── */}
-      {!store.currentGroup ? (
+      {/* ─── MODIFIED MODULAR ROUTER GRID SECTION ─── */}
+      {/* If creation flag query exists OR they have zero groups built yet, render form */}
+      {isCreationMode || !store.currentGroup ? (
         <InteractiveFormCard onSubmit={handleCreateGroup}>
-          <Users size={48} color={Colors.primary} style={{ alignSelf: 'center' }} />
+          {/* Back button option available only if they already have background active pipelines */}
+          {store.userGroups?.length > 0 && (
+            <BackButton type="button" onClick={() => router.push('/dashboard')}>
+              <ArrowLeft size={16} />
+              <span>Back to Dashboard</span>
+            </BackButton>
+          )}
+          
+          <Users size={48} color={Colors.primary} style={{ alignSelf: 'center', marginTop: '10px' }} />
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: '800' }}>Create Your Circle</h2>
             <p style={{ margin: 0, color: Colors.textSecondary, fontSize: '14px' }}>
@@ -115,10 +133,17 @@ export default function GroupsManagerPage() {
         <GroupDashboardLayout>
           {/* Main List Management Side Pane */}
           <MainSectionColumn>
-            <h1 style={{ fontSize: '20px', color: '#000000', fontWeight: '800', margin: 0 }}>{store.currentGroup.name}</h1>
-            <p style={{ color: Colors.textSecondary, margin: '-4px 0 12px 0', fontSize: '14px' }}>
-              Active tracking metrics and circle geofencing alerts.
-            </p>
+            <HeaderControlRow>
+              <div>
+                <h1 style={{ fontSize: '20px', color: '#000000', fontWeight: '800', margin: 0 }}>{store.currentGroup.name}</h1>
+                <p style={{ color: Colors.textSecondary, margin: '2px 0 0 0', fontSize: '14px' }}>
+                  Active tracking metrics and circle geofencing alerts.
+                </p>
+              </div>
+              <SecondaryPanelButton onClick={() => router.push('/dashboard')}>
+                Exit to Home
+              </SecondaryPanelButton>
+            </HeaderControlRow>
 
             <TraceMapBarButton type="button" onClick={() => router.push('/dashboard/map')}>
               <MapBarContent>
@@ -170,6 +195,9 @@ export default function GroupsManagerPage() {
             <InviteGuestCard 
               groupId={store.currentGroup.id} 
               generateInviteLink={store.generateInviteLink} 
+              // Added explicit fallback property check mechanism
+              //@ts-ignore 
+              currentGroupName={store.currentGroup.name}
             />
           </SideSectionColumn>
         </GroupDashboardLayout>
@@ -178,7 +206,45 @@ export default function GroupsManagerPage() {
   );
 }
 
-// ─── STYLED DESIGN INFRASTRUCTURE ELEMENTS ──────────────────────────────────
+// ─── ADDED NEW ALIGNMENT STYLES ───────────────────────────────────────────
+const HeaderControlRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
+`;
+
+const SecondaryPanelButton = styled.button`
+  background: #f2f2f7;
+  color: #1c1c1e;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover { background: #e5e5ea; }
+`;
+
+const BackButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: ${Colors.textSecondary};
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-start;
+  padding: 0;
+  margin-bottom: 4px;
+  &:hover { color: ${Colors.textPrimary}; }
+`;
+
+// Keep your existing layout component style blocks below completely untouched...
 const ContainerWrapper = styled.div`
   padding: 32px;
   max-width: 1000px;
@@ -187,7 +253,6 @@ const ContainerWrapper = styled.div`
   flex-direction: column;
   gap: 24px;
 `;
-
 const InboxCard = styled.div`
   background: ${Colors.white};
   border: 1.5px solid ${Colors.border};
@@ -197,13 +262,11 @@ const InboxCard = styled.div`
   flex-direction: column;
   gap: 14px;
 `;
-
 const NotificationGrid = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
 `;
-
 const NotificationItem = styled.div`
   display: flex;
   justify-content: space-between;
@@ -216,12 +279,10 @@ const NotificationItem = styled.div`
   font-size: 14px;
   @media(max-width: 768px) { flex-direction: column; gap: 12px; align-items: flex-start; }
 `;
-
 const ActionButtonsGroup = styled.div`
   display: flex;
   gap: 8px;
 `;
-
 const ActionButton = styled.button<{ $variant: 'success' | 'danger' }>`
   display: flex;
   align-items: center;
@@ -235,7 +296,6 @@ const ActionButton = styled.button<{ $variant: 'success' | 'danger' }>`
   color: white;
   background-color: ${({ $variant }) => ($variant === 'success' ? Colors.success : Colors.error)};
 `;
-
 const InteractiveFormCard = styled.form`
   background-color: ${Colors.white};
   border: 1.5px solid ${Colors.border};
@@ -246,12 +306,10 @@ const InteractiveFormCard = styled.form`
   gap: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.01);
 `;
-
 const InputGroup = styled.div`
   display: flex;
   flex-direction: column;
 `;
-
 const StyledTextInput = styled.input`
   height: 48px;
   border-radius: 12px;
@@ -261,7 +319,6 @@ const StyledTextInput = styled.input`
   outline: none;
   &:focus { border-color: ${Colors.primary}; }
 `;
-
 const SubmitButton = styled.button`
   background-color: ${Colors.primary};
   color: white;
@@ -273,39 +330,33 @@ const SubmitButton = styled.button`
   transition: opacity 0.2s;
   &:disabled { opacity: 0.6; }
 `;
-
 const GroupDashboardLayout = styled.div`
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 24px;
   @media(max-width: 768px) { grid-template-columns: 1fr; }
 `;
-
 const MainSectionColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
 `;
-
 const SideSectionColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
 `;
-
 const SectionHeading = styled.h4`
   font-size: 16px;
   font-weight: 700;
   margin: 0;
   color: #000000;
 `;
-
 const RosterGridList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
 `;
-
 const RosterItemCard = styled.div`
   background: ${Colors.white};
   border: 1.5px solid ${Colors.border};
@@ -315,7 +366,6 @@ const RosterItemCard = styled.div`
   align-items: center;
   gap: 12px;
 `;
-
 const AvatarLabelIcon = styled.div`
   width: 36px;
   height: 36px;
@@ -326,7 +376,6 @@ const AvatarLabelIcon = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
 const MemberMeta = styled.div`
   display: flex;
   flex-direction: column;
@@ -334,7 +383,6 @@ const MemberMeta = styled.div`
   .name { font-weight: 600; font-size: 14px; color: ${Colors.textPrimary}; }
   .username { font-size: 12px; color: ${Colors.textSecondary}; }
 `;
-
 const GeofenceBadge = styled.div<{ $outside: boolean }>`
   display: flex;
   align-items: center;
@@ -346,7 +394,6 @@ const GeofenceBadge = styled.div<{ $outside: boolean }>`
   color: ${({ $outside }) => ($outside ? Colors.error : Colors.success)};
   background-color: ${({ $outside }) => ($outside ? Colors.errorLight : Colors.primaryLight)};
 `;
-
 const TraceMapBarButton = styled.button`
   display: flex;
   align-items: center;
@@ -362,19 +409,16 @@ const TraceMapBarButton = styled.button`
   font-family: inherit;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s, background-color 0.2s;
-
   &:hover {
     transform: translateY(-1px);
     background-color: #2c2c2e;
   }
 `;
-
 const MapBarContent = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
 `;
-
 const MapIconCircle = styled.div`
   width: 40px;
   height: 40px;
@@ -385,7 +429,6 @@ const MapIconCircle = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
 const LoneUserSuggestionCard = styled.div`
   display: flex;
   gap: 14px;
