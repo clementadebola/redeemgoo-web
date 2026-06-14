@@ -37,7 +37,7 @@ export default function GroupWidget({ currentGroup, onManageClick }: GroupWidget
             <p style={{ margin: 0, fontSize: '13px', color: Colors.textSecondary }}>
               {currentGroup 
                 ? `${currentGroup.members.length} member(s) linked in your active monitoring pool.` 
-                : 'Trace your circle members live across the campus.'}
+                : 'Trace your circle members live across the city.'}
             </p>
           </div>
         </GroupMeta>

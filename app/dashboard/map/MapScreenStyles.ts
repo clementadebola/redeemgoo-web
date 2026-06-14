@@ -327,42 +327,40 @@ export const MyLocationFab = styled.button`
 `;
 
 
-// Add this definition directly to the bottom of your MapScreenStyles.ts file:
+
 export const ProjectionFab = styled.button<{ $is3D: boolean }>`
   position: absolute;
+  /* ✅ FIXED: Moved to the left alignment channel next to the search bar container */
+  /* This prevents the right-side Group Floating Radar feed panel from ever blocking it */
   top: 130px;
-  right: 16px;
-  background: ${({ $is3D }) => ($is3D ? "#10b981" : "rgba(255, 255, 255, 0.85)")};
+  left: 24px;
+  right: auto;
+  background: ${({ $is3D }) => ($is3D ? "#10b981" : "rgba(255, 255, 255, 0.9)")};
   color: ${({ $is3D }) => ($is3D ? "#ffffff" : "#1c1c1e")};
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 10px 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 10px 16px;
   border-radius: 14px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
   z-index: 110;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
   &:hover {
     transform: translateY(-1px);
     background: ${({ $is3D }) => ($is3D ? "#059669" : "#f2f2f7")};
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
-  }
-
-  &:active {
-    transform: translateY(0);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
   }
 
   @media(max-width: 768px) {
     top: auto;
     bottom: 154px; 
-    right: auto;
-    left: 16px; /* Positions perfectly opposite to the MyLocation Fab button layout on mobile */
+    left: 16px; 
   }
 `;

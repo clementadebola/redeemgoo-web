@@ -69,7 +69,6 @@ export default function InviteUserCard({ onInvite }: InviteUserCardProps) {
           autoComplete="off"
         />
 
-        {/* Dynamic Suggestions List Overlay Menu */}
         {searchResults.length > 0 && (
           <SuggestionsListOverlay>
             {searchResults.map((suggestion) => (

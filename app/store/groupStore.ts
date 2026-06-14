@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { 
-  collection, doc, setDoc, updateDoc, arrayUnion, arrayRemove, 
+  collection, doc, setDoc, updateDoc, arrayUnion, 
   query, where, getDocs, onSnapshot, serverTimestamp, addDoc, orderBy, limit 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -28,13 +28,22 @@ export interface SearchedUser {
   username: string;
 }
 
+export interface GroupItem {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: string[];
+}
+
 interface GroupState {
-  currentGroup: { id: string; name: string; ownerId: string; members: string[] } | null;
+  userGroups: GroupItem[]; // ✅ NEW: Collections array mapping multiple groups
+  currentGroup: GroupItem | null; // Keeps track of the single group active on the map view
   groupMembersProfiles: GroupMember[];
   notifications: GroupNotification[];
   searchResults: SearchedUser[];
   isLoading: boolean;
   
+  setCurrentGroup: (group: GroupItem | null) => void;
   createGroup: (groupName: string, ownerId: string, ownerName: string, ownerUsername: string) => Promise<void>;
   searchUsersByPrefix: (searchText: string) => Promise<void>;
   inviteUserByUsername: (username: string, fromUserId: string, fromUserName: string) => Promise<{ success: boolean; message: string }>;
@@ -44,11 +53,14 @@ interface GroupState {
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
+  userGroups: [],
   currentGroup: null,
   groupMembersProfiles: [],
   notifications: [],
   searchResults: [],
   isLoading: false,
+
+  setCurrentGroup: (group) => set({ currentGroup: group }),
 
   createGroup: async (groupName, ownerId, ownerName, ownerUsername) => {
     set({ isLoading: true });
@@ -63,10 +75,11 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       
       await setDoc(groupRef, newGroup);
       
-      set({ 
+      set((state) => ({ 
+        userGroups: [newGroup, ...state.userGroups],
         currentGroup: newGroup,
         groupMembersProfiles: [{ uid: ownerId, displayName: ownerName, username: ownerUsername, isOutsideGeofence: false }]
-      });
+      }));
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,16 +87,13 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
-  // ✅ FIXED: Pointing directly to your "users" collection mapping
   searchUsersByPrefix: async (searchText) => {
     const queryText = searchText.trim().toLowerCase();
     if (!queryText) {
       set({ searchResults: [] });
       return;
     }
-
     try {
-      // Directed query to search inside your "users" collection schema path
       const userQuery = query(
         collection(db, 'users'), 
         where('username', '>=', queryText),
@@ -91,10 +101,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         orderBy('username'),
         limit(5)
       );
-
       const querySnap = await getDocs(userQuery);
       const results: SearchedUser[] = [];
-      
       querySnap.forEach((doc) => {
         const data = doc.data();
         results.push({
@@ -103,24 +111,20 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           username: data.username || ''
         });
       });
-
       set({ searchResults: results });
     } catch (err) {
       console.error("Predictive search lookup failed:", err);
     }
   },
 
-  // ✅ FIXED: Pointing directly to your "users" collection mapping
   inviteUserByUsername: async (username, fromUserId, fromUserName) => {
     const cleanUsername = username.trim().toLowerCase();
     const group = get().currentGroup;
-    if (!group) return { success: false, message: 'You must create a group first.' };
+    if (!group) return { success: false, message: 'You must select or create a group first.' };
 
     try {
-      // Swapped target lookup index collection path parameter from 'profiles' to 'users'
       const userQuery = query(collection(db, 'users'), where('username', '==', cleanUsername));
       const querySnap = await getDocs(userQuery);
-
       if (querySnap.empty) {
         return { success: false, message: 'User not found. Try sending them an invite link instead!' };
       }
@@ -152,7 +156,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     return `${window.location.origin}/signup?groupInvite=${groupId}`;
   },
 
-  // ✅ FIXED: Gathering member profile metadata details safely from your "users" folder
+  // ✅ MODIFIED: Listens globally to EVERY group row card matched to user membership arrays
   listenToGroupAndNotifications: (userId) => {
     set({ isLoading: true });
 
@@ -165,20 +169,30 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       set({ notifications: notifs });
     });
 
-    const groupQuery = query(collection(db, 'groups'), where('members', 'array-contains', userId));
-    const unsubGroup = onSnapshot(groupQuery, async (snapshot) => {
+    const groupsQuery = query(collection(db, 'groups'), where('members', 'array-contains', userId));
+    const unsubGroup = onSnapshot(groupsQuery, async (snapshot) => {
       if (snapshot.empty) {
-        set({ currentGroup: null, groupMembersProfiles: [], isLoading: false });
+        set({ userGroups: [], currentGroup: null, groupMembersProfiles: [], isLoading: false });
         return;
       }
 
-      const groupData = snapshot.docs[0].data() as any;
-      set({ currentGroup: groupData });
+      const groupsList: GroupItem[] = [];
+      snapshot.forEach((doc) => {
+        groupsList.push(doc.data() as GroupItem);
+      });
+
+      set({ userGroups: groupsList });
+
+      // Fallback: Default active map viewport tracking target to first collection element if unassigned
+      let activeGroup = get().currentGroup;
+      if (!activeGroup || !groupsList.some(g => g.id === activeGroup?.id)) {
+        activeGroup = groupsList[0];
+        set({ currentGroup: activeGroup });
+      }
 
       try {
         const membersProfiles: GroupMember[] = [];
-        for (const mId of groupData.members) {
-          // Swapped data synchronization directory path target to "users" collection
+        for (const mId of activeGroup.members) {
           const profileSnap = await getDocs(query(collection(db, 'users'), where('uid', '==', mId)));
           if (!profileSnap.empty) {
             const p = profileSnap.docs[0].data();
@@ -218,7 +232,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           });
         }
       }
-      
       await updateDoc(notifRef, { status: accept ? 'accepted' : 'declined' });
     } catch (err) {
       console.error(err);
