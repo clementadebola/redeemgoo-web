@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react'; // ✅ FIXED: Added useCallback to the import array
+import React, { useEffect, useRef, useCallback } from 'react'; 
 import styled from 'styled-components';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';

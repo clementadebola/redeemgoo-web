@@ -281,7 +281,7 @@ const FabButton = styled.button`
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 10px 28px rgba(16, 185, 129, 0.4);
-  z-index: 1000; /* above UIOverlayContainer carousel/HUD which can sit ~30-40 */
+  z-index: 800; /* above UIOverlayContainer carousel/HUD which can sit ~30-40 */
   transition: transform 0.2s ease;
 
   &:hover { transform: scale(1.06); }
@@ -308,7 +308,7 @@ const Panel = styled.div`
   background: ${Colors.white};
   border-radius: 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  z-index: 800;
   display: flex;
   flex-direction: column;
   overflow: hidden;
