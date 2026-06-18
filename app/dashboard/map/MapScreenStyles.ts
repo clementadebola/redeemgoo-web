@@ -1,4 +1,16 @@
-import styled from 'styled-components';
+'use client';
+
+import styled, { keyframes } from 'styled-components';
+
+const Colors = {
+  primary: '#10b981',
+  primaryLight: '#e6f7f0',
+  textPrimary: '#1c1c1e',
+  textSecondary: '#8e8e93',
+  border: '#e5e5ea',
+  white: '#ffffff',
+  surface: '#f2f2f7',
+};
 
 export const Container = styled.div`
   position: absolute;
@@ -38,7 +50,6 @@ export const LocationBanner = styled.div<{ $type: 'neutral' | 'warning' | 'succe
     if ($type === 'success') return 'rgba(16, 185, 129, 0.9)';
     return 'rgba(255, 59, 48, 0.9)';
   }};
-  cursor: ${({ $type }) => ($type === 'error' ? 'pointer' : 'default')};
 `;
 
 export const BannerText = styled.span`
@@ -169,6 +180,7 @@ export const SuggestionDist = styled.span`
   font-size: 12px;
   color: #10b981;
   font-weight: 700;
+  white-space: nowrap;
 `;
 
 export const LoaderContainer = styled.div`
@@ -215,9 +227,9 @@ export const UIOverlayContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  pointer-events: none; /* Keeps background map gestures interactive */
+  pointer-events: none;
 
-  & > * { pointer-events: auto; } /* Re-enables pointer tracks inside card modules */
+  & > * { pointer-events: auto; }
 `;
 
 export const CarouselContainer = styled.div`
@@ -297,70 +309,215 @@ export const PoiAction = styled.div`
   gap: 2px;
 `;
 
-export const MyLocationFab = styled.button`
+export const PoiDistanceRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8e8e93;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+export const MyLocationFab = styled.button<{ $active?: boolean }>`
   position: absolute;
+  bottom: 100px;
   right: 16px;
-  bottom: 154px; /* Perfectly aligned to rest above the newly polished exploration carousel block */
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #ffffff;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  color: #007aff;
-  font-size: 22px;
-  z-index: 95;
-  transition: transform 0.2s, background-color 0.2s;
-
-  &:hover {
-    transform: scale(1.04);
-    background-color: #f2f2f7;
-  }
-  
-  &:active {
-    transform: scale(0.96);
+  z-index: 25;
+  transition: all 0.25s ease;
+ 
+  background: ${({ $active }) => ($active ? '#10b981' : '#ffffff')};
+  color: ${({ $active }) => ($active ? '#ffffff' : '#1c1c1e')};
+  box-shadow: ${({ $active }) =>
+    $active
+      ? '0 0 0 4px rgba(16,185,129,0.25), 0 8px 20px rgba(16,185,129,0.4)'
+      : '0 4px 14px rgba(0,0,0,0.15)'};
+ 
+  ${({ $active }) =>
+    $active &&
+    `
+    animation: myLocationPulse 2s infinite ease-in-out;
+  `}
+ 
+  @keyframes myLocationPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.25), 0 8px 20px rgba(16,185,129,0.4); }
+    50%      { box-shadow: 0 0 0 8px rgba(16,185,129,0.12), 0 8px 20px rgba(16,185,129,0.4); }
   }
 `;
 
+// ── FAB Stack Controls Workspace ───────────────────────────────────────────
 
-
-export const ProjectionFab = styled.button<{ $is3D: boolean }>`
+export const FabStack = styled.div`
   position: absolute;
-  /* ✅ FIXED: Moved to the left alignment channel next to the search bar container */
-  /* This prevents the right-side Group Floating Radar feed panel from ever blocking it */
   top: 130px;
-  left: 24px;
-  right: auto;
-  background: ${({ $is3D }) => ($is3D ? "#10b981" : "rgba(255, 255, 255, 0.9)")};
-  color: ${({ $is3D }) => ($is3D ? "#ffffff" : "#1c1c1e")};
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 10px 16px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 700;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 115;
+
+  @media (max-width: 768px) {
+    top: auto;
+    bottom: 232px;
+    left: 16px;
+    right: 16px;
+    flex-direction: row;
+    width: auto;
+  }
+`;
+
+const FabBase = styled.button`
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 16px;
+  border-radius: 50px;
+  border: none;
   cursor: pointer;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
-  z-index: 110;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
-  &:hover {
-    transform: translateY(-1px);
-    background: ${({ $is3D }) => ($is3D ? "#059669" : "#f2f2f7")};
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
-  }
+  @media (max-width: 768px) {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+    gap: 0;
 
-  @media(max-width: 768px) {
-    top: auto;
-    bottom: 154px; 
-    left: 16px; 
+    span {
+      display: none;
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
+`;
+
+export const ProjectionFab = styled(FabBase)<{ $is3D: boolean }>`
+  background: ${({ $is3D }) => ($is3D ? Colors.primary : Colors.white)};
+  color: ${({ $is3D }) => ($is3D ? Colors.white : Colors.textPrimary)};
+`;
+
+export const StyleFab = styled(FabBase)`
+  background: ${Colors.white};
+  color: ${Colors.textPrimary};
+`;
+
+// ── Selected Pin Pill Layouts ────────────────────────────────────────────────
+
+export const CoordPill = styled.div`
+  position: absolute;
+  bottom: 210px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(28, 28, 30, 0.88);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: monospace;
+  padding: 7px 12px;
+  border-radius: 50px;
+  z-index: 20;
+  pointer-events: all;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  white-space: nowrap;
+`;
+
+export const CoordClose = styled.button`
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  padding: 0;
+  margin-left: 2px;
+  flex-shrink: 0;
+  &:hover { background: rgba(255,255,255,0.25); }
+`;
+
+// ── Search Dropdown Inline AI Frameworks ──────────────────────────────────────
+
+export const AiSuggestionsSection = styled.div`
+  border-top: 1px solid ${Colors.border};
+  padding-top: 4px;
+`;
+
+export const AiSuggestionsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: ${Colors.primary};
+  padding: 8px 16px 4px;
+`;
+
+const dotBounce = keyframes`
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40%           { transform: scale(1); opacity: 1; }
+`;
+
+export const AiLoadingDots = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px 10px;
+
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${Colors.primary};
+    display: inline-block;
+    animation: ${dotBounce} 1.2s infinite ease-in-out;
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+`;
+
+export const AiSuggestionRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover { background: ${Colors.primaryLight}; }
+`;
+
+export const AiSuggestionText = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${Colors.textPrimary};
+  line-height: 1.3;
+`;
+
+export const AiSuggestionSub = styled.div`
+  font-size: 11px;
+  color: ${Colors.primary};
+  font-weight: 600;
+  margin-top: 2px;
 `;

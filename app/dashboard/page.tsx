@@ -12,7 +12,7 @@ import { useLocation } from '../hooks/useLocation';
 import NotificationCenter from '../components/home/NotificationCenter';
 import DestinationWidget from '../components/home/DestinationWidget';
 import LiveLocationWidget from '../components/home/LiveLocationWidget';
-import GroupWidget from '../components/home/GroupWidget'; // ✅ REPURPOSED UNIFIED MODULE IMPORT
+import GroupWidget from '../components/home/GroupWidget'; 
 
 const Colors = {
   primary: '#10b981',
@@ -42,7 +42,7 @@ export default function HomeScreen() {
   const profile = useAuthStore((state) => state.profile);
   const { startTracking } = useLocationStore();
   
-  // Destructure multi-group states smoothly
+
   const { userGroups, currentGroup, setCurrentGroup, listenToGroupAndNotifications } = useGroupStore();
   const { userLocation } = useLocation();
 
