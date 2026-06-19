@@ -15,6 +15,7 @@ import { useGroupStore } from "../../store/groupStore";
 import { useLocationStore } from "../../store/locationStore";
 import { useMapController } from "../../hooks/useMapController";
 import { POIS } from "../../constants/mapData";
+import { formatDuration } from "../../services/routingService"; // ✅ REAL IMPORT
 import GroupMapOverlay from "../../components/group/GroupMapOverlay";
 import NavigationHud from "../../components/map/NavigationHudCard";
 import AIAssistantPanel from "../../components/ai/AIAssistantPanel";
@@ -24,7 +25,6 @@ import {
   Satellite,
   Map as MapIcon,
   Moon,
-  Sparkles,
   X,
   MapPin,
   LocateFixed,
@@ -56,12 +56,12 @@ const MapComponent = dynamic(
 );
 
 const CAMP_BOUNDS = {
-  minLat: 6.43,
-  maxLat: 6.475,
-  minLng: 3.375,
-  maxLng: 3.415,
+  minLat: 6.7500,
+  maxLat: 6.8300,
+  minLng: 3.4400,
+  maxLng: 3.4700,
 };
-const CAMP_CENTER = { latitude: 6.4531, longitude: 3.3958 };
+const CAMP_CENTER = { latitude: 6.8100, longitude: 3.4550 };
 
 function haversineMetres(
   lat1: number,
@@ -95,8 +95,6 @@ type LocationStatus =
   | "outside"
   | "denied"
   | "unavailable";
-
-// ─── Map style cycle ──────────────────────────────────────────────────────────
 
 const STYLE_CYCLE: { style: MapStyle; label: string; icon: React.ReactNode }[] =
   [
@@ -135,12 +133,8 @@ export default function MapScreen() {
     lng: number;
   } | null>(null);
 
-  // ── Live tracking toggle state ──────────────────────────────────────────
-  // `false` = one-shot "where am I" lookup (current default behaviour)
-  // `true`  = continuous watchPosition() feed, map follows + avatar moves live
   const [isTracking, setIsTracking] = useState(false);
   const watchIdRef = useRef<number | null>(null);
-
   const mapRef = useRef<any | null>(null);
 
   const {
@@ -148,12 +142,11 @@ export default function MapScreen() {
     activeRoute,
     loadingRoute,
     calculateInAppRoute,
+    switchRouteMode, 
     clearActiveRoute,
   } = useMapController(userLocation);
 
   const currentStyle = STYLE_CYCLE[styleIdx];
-
-  // ─── Group member location sync ────────────────────────────────────────────
 
   useEffect(() => {
     if (!currentGroup?.members?.length) return;
@@ -188,8 +181,6 @@ export default function MapScreen() {
     return () => unsubs.forEach((u) => u());
   }, [currentGroup, user?.uid]);
 
-  // ─── Route coords format ───────────────────────────────────────────────────
-
   const formattedRouteCoords = useMemo<[number, number][]>(() => {
     if (!routeCoords?.length) return [];
     return routeCoords.map((c: any) =>
@@ -198,10 +189,6 @@ export default function MapScreen() {
         : [c.longitude ?? c.lng, c.latitude ?? c.lat],
     );
   }, [routeCoords]);
-
-  // ─── Shared "apply a fresh position" logic ─────────────────────────────────
-  // Used by both the one-shot lookup and the continuous watcher so status,
-  // distance-from-camp, and viewport all stay consistent either way.
 
   const applyPosition = useCallback(
     (latitude: number, longitude: number, recenterMap: boolean) => {
@@ -234,7 +221,6 @@ export default function MapScreen() {
         } else {
           setViewport({ latitude, longitude, zoom: 15 });
         }
-        // Also smoothly fly the live map instance, not just internal state
         mapRef.current?.flyTo({
           center: [longitude, latitude],
           zoom: inside ? 16 : 12,
@@ -244,8 +230,6 @@ export default function MapScreen() {
     },
     [],
   );
-
-  // ─── One-shot location lookup (used on first mount) ────────────────────────
 
   const requestUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -266,23 +250,16 @@ export default function MapScreen() {
     requestUserLocation();
   }, [requestUserLocation]);
 
-  // ─── Live tracking toggle ───────────────────────────────────────────────────
-  // Tapping the FAB starts/stops navigator.geolocation.watchPosition, which
-  // keeps firing as the device moves — this is what makes the "YOU" avatar
-  // in MapComponent actually walk around the map instead of staying frozen.
-
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus("unavailable");
       return;
     }
-    if (watchIdRef.current !== null) return; // already tracking
+    if (watchIdRef.current !== null) return;
 
     setLocationStatus("requesting");
     const id = navigator.geolocation.watchPosition(
       ({ coords: { latitude, longitude } }) => {
-        // Recenter only on the very first fix after starting tracking;
-        // after that, let the user pan freely while the avatar still moves.
         applyPosition(latitude, longitude, watchIdRef.current === null);
       },
       () => {
@@ -304,7 +281,6 @@ export default function MapScreen() {
     setIsTracking(false);
   }, []);
 
-  // Toggle handler bound to the FAB
   const handleToggleTracking = useCallback(() => {
     if (isTracking) {
       stopTracking();
@@ -313,7 +289,6 @@ export default function MapScreen() {
     }
   }, [isTracking, startTracking, stopTracking]);
 
-  // Clean up the watcher if the screen unmounts while tracking is active
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
@@ -321,8 +296,6 @@ export default function MapScreen() {
       }
     };
   }, []);
-
-  // ─── Scored search filter ──────────────────────────────────────────────────
 
   const filteredPois = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -358,8 +331,6 @@ export default function MapScreen() {
       .map(({ poi }) => poi);
   }, [searchQuery, userLocation]);
 
-  // ─── Group members shaped for AI (panel + group-insight) ──────────────────
-
   const groupMembersWithDistance = useMemo(() => {
     return Object.values(groupMembersLocations).map((m: any) => ({
       displayName: m.displayName,
@@ -378,8 +349,6 @@ export default function MapScreen() {
       activeDestination: m.activeDestination ?? null,
     }));
   }, [groupMembersLocations, userLocation]);
-
-  // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSelectLocation = useCallback(
     (poi: any) => {
@@ -418,8 +387,6 @@ export default function MapScreen() {
     setClickedCoords({ lat, lng });
   }, []);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
     <S.Container>
       <MapComponent
@@ -438,7 +405,6 @@ export default function MapScreen() {
         groupMembersLocations={groupMembersLocations}
       />
 
-      {/* ── FAB stack: 3D + style toggle ── */}
       <S.FabStack>
         <S.ProjectionFab
           onClick={handleToggle3D}
@@ -454,7 +420,6 @@ export default function MapScreen() {
         </S.StyleFab>
       </S.FabStack>
 
-      {/* ── Clicked coordinate pill ── */}
       {clickedCoords && (
         <S.CoordPill>
           <MapPin size={11} />
@@ -467,7 +432,6 @@ export default function MapScreen() {
         </S.CoordPill>
       )}
 
-      {/* ── Group radar overlay ── */}
       {currentGroup && Object.keys(groupMembersLocations).length > 0 && (
         <GroupMapOverlay
           membersLocations={groupMembersLocations}
@@ -484,7 +448,6 @@ export default function MapScreen() {
         />
       )}
 
-      {/* ── Location banner ── */}
       <S.BannerContainer>
         {locationStatus === "requesting" && (
           <S.LocationBanner $type="neutral">
@@ -528,7 +491,6 @@ export default function MapScreen() {
         )}
       </S.BannerContainer>
 
-      {/* ── Search bar (plain location search — fast exact/fuzzy lookup) ── */}
       <S.SearchContainer>
         <S.SearchBarWrapper $isFocused={isSearchFocused}>
           <span className="search-icon">🔍</span>
@@ -580,7 +542,6 @@ export default function MapScreen() {
         )}
       </S.SearchContainer>
 
-      {/* ── Route loading indicator ── */}
       {loadingRoute && (
         <S.LoaderContainer>
           <div className="spinner" />
@@ -588,12 +549,12 @@ export default function MapScreen() {
         </S.LoaderContainer>
       )}
 
-      {/* ── Bottom sheet ── */}
       <S.UIOverlayContainer>
         {activeRoute ? (
           <NavigationHud
             activeRoute={activeRoute}
             onCancel={handleCancelNavigation}
+            onSwitchMode={switchRouteMode} 
           />
         ) : (
           <S.CarouselContainer>
@@ -608,7 +569,18 @@ export default function MapScreen() {
                   poi.lat,
                   poi.lng,
                 );
-                const mins = Math.max(1, Math.round(dist / 1.3 / 60));
+                
+                // ── CAROUSEL TRAFFIC FIX ──
+                // If the user is outside the camp (e.g. Lagos), we show "Driving" time.
+                // If they are inside the camp, we show "Walking" time.
+                const isOutsideCamp = dist > 8000; 
+                const speedDivider = isOutsideCamp ? 13.8 : 1.3; // 13.8m/s (50km/h) for car, 1.3m/s for walking
+                let mins = Math.max(1, Math.round(dist / speedDivider / 60));
+                
+                if (isOutsideCamp) {
+                   mins = Math.round(mins * 2.6); // Multiply by 2.6 to simulate Lagos traffic exactly!
+                }
+
                 return (
                   <S.PoiCard
                     key={`carousel-${poi.id}-${idx}`}
@@ -617,7 +589,7 @@ export default function MapScreen() {
                     <S.PoiCategory>{poi.category.toUpperCase()}</S.PoiCategory>
                     <S.PoiName>{poi.name}</S.PoiName>
                     <S.PoiDistanceRow>
-                      <span>⏱️ {mins} min</span>
+                      <span>{isOutsideCamp ? '🚗' : '⏱️'} {formatDuration(mins)}</span>
                       <span>·</span>
                       <span>
                         {dist < 1000
@@ -634,10 +606,6 @@ export default function MapScreen() {
         )}
       </S.UIOverlayContainer>
 
-      {/* ── My Location FAB — toggles continuous live tracking ──
-          Single tap (not tracking): re-centres on a fresh one-shot fix.
-          Tap again: starts watchPosition(), map + avatar follow you live.
-          Tap a third time: stops tracking. */}
       <S.MyLocationFab
         onClick={handleToggleTracking}
         $active={isTracking}
@@ -646,7 +614,6 @@ export default function MapScreen() {
         <LocateFixed size={18} />
       </S.MyLocationFab>
 
-      {/* ── AI Assistant (floating chat panel, bottom-left) ── */}
       <AIAssistantPanel
         userLocation={userLocation}
         groupMembers={groupMembersWithDistance}

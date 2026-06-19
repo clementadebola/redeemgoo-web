@@ -2,43 +2,54 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { Navigation, Compass, X } from 'lucide-react';
+import { Compass, X, Footprints, Car, Bike } from 'lucide-react';
+import type { RouteMode } from '../../services/routingService';
 
 interface NavigationHudProps {
   activeRoute: {
     destinationName: string;
     distance: string;
     duration: string;
+    mode: RouteMode;
   };
   onCancel: () => void;
+  onSwitchMode: (mode: RouteMode) => void;
 }
 
-export default function NavigationHud({ activeRoute, onCancel }: NavigationHudProps) {
+export default function NavigationHud({ activeRoute, onCancel, onSwitchMode }: NavigationHudProps) {
   return (
     <HudCardContainer>
       <HeaderSection>
-        <StatusBadge>
-          <PulseIndicator />
-          <Navigation size={10} style={{ transform: 'rotate(45deg)' }} />
-          <span>GUIDANCE ACTIVE</span>
-        </StatusBadge>
+        <RouteTitle>{activeRoute.destinationName}</RouteTitle>
         <CancelIconButton type="button" onClick={onCancel} title="End Navigation">
           <X size={16} />
         </CancelIconButton>
       </HeaderSection>
 
-      <RouteTitle>{activeRoute.destinationName}</RouteTitle>
+      {/* ── GOOGLE MAPS STYLE TOGGLE BAR ── */}
+      <ModeToggleBar>
+        <ModeButton $active={activeRoute.mode === 'driving'} onClick={() => onSwitchMode('driving')}>
+          <Car size={16} />
+          <span>Drive</span>
+        </ModeButton>
+        <ModeButton $active={activeRoute.mode === 'bike'} onClick={() => onSwitchMode('bike')}>
+          <Bike size={16} />
+          <span>Bike</span>
+        </ModeButton>
+        <ModeButton $active={activeRoute.mode === 'foot'} onClick={() => onSwitchMode('foot')}>
+          <Footprints size={16} />
+          <span>Walk</span>
+        </ModeButton>
+      </ModeToggleBar>
 
       <MetricsRowGrid>
         <MetricBlock>
-          <MetricLabel>DISTANCE REMAINING</MetricLabel>
+          <MetricLabel>DISTANCE</MetricLabel>
           <MetricValue>{activeRoute.distance}</MetricValue>
         </MetricBlock>
-
         <VerticalDivider />
-
         <MetricBlock>
-          <MetricLabel>ESTIMATED ARRIVAL</MetricLabel>
+          <MetricLabel>EST. TIME</MetricLabel>
           <MetricValue $highlight>{activeRoute.duration}</MetricValue>
         </MetricBlock>
       </MetricsRowGrid>
@@ -51,35 +62,58 @@ export default function NavigationHud({ activeRoute, onCancel }: NavigationHudPr
   );
 }
 
+const ModeToggleBar = styled.div`
+  display: flex;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  padding: 4px;
+  margin-top: 4px;
+`;
+
+const ModeButton = styled.button<{ $active: boolean }>`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  background: ${({ $active }) => ($active ? '#ffffff' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#10b981' : '#8e8e93')};
+  box-shadow: ${({ $active }) => ($active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none')};
+
+  &:hover {
+    color: ${({ $active }) => ($active ? '#10b981' : '#1c1c1e')};
+  }
+`;
+
 const HudCardContainer = styled.div`
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(190%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 24px;
   padding: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   width: 100%;
   max-width: 440px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transform: translateY(0);
-  animation: slideCardUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideCardUp 0.3s ease-out;
 
   @keyframes slideCardUp {
-    from { transform: translateY(30px); opacity: 0; }
+    from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
 
-  /* ── Mobile: tighter padding + gap so the card doesn't dominate the
-     screen, since it sits inside a bottom sheet on a much shorter
-     viewport than desktop. ── */
   @media (max-width: 768px) {
-    padding: 14px 16px;
-    gap: 10px;
-    border-radius: 18px;
-    max-width: 100%;
+    padding: 16px;
+    border-radius: 20px;
   }
 `;
 
@@ -88,56 +122,6 @@ const HeaderSection = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-`;
-
-const StatusBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background-color: #e6f7f0;
-  color: #10b981;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  padding: 4px 10px;
-  border-radius: 50px;
-
-  @media (max-width: 768px) {
-    font-size: 9px;
-    padding: 3px 8px;
-  }
-
-  /* Hide the "GUIDANCE ACTIVE" text on very small screens, keep the
-     pulse dot + icon only — saves horizontal space without losing
-     the "this is live" signal. */
-  @media (max-width: 380px) {
-    gap: 4px;
-
-    span { display: none; }
-  }
-`;
-
-const PulseIndicator = styled.div`
-  width: 6px;
-  height: 6px;
-  background-color: #10b981;
-  border-radius: 50%;
-  position: relative;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: inherit;
-    animation: badgePulse 1.8s infinite ease-in-out;
-  }
-
-  @keyframes badgePulse {
-    0% { transform: scale(1); opacity: 0.6; }
-    100% { transform: scale(2.4); opacity: 0; }
-  }
 `;
 
 const CancelIconButton = styled.button`
@@ -151,38 +135,14 @@ const CancelIconButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-
-  &:hover {
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff3b30;
-  }
-
-  @media (max-width: 768px) {
-    width: 24px;
-    height: 24px;
-  }
+  &:hover { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }
 `;
 
 const RouteTitle = styled.h2`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: #1c1c1e;
   margin: 0;
-  letter-spacing: -0.3px;
-  line-height: 1.2;
-
-  @media (max-width: 768px) {
-    font-size: 15px;
-    /* Long POI names (e.g. "The Arena (3km x 3km Auditorium)") wrap to
-       2 lines at desktop size on a narrow screen — clamp instead. */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-  }
 `;
 
 const MetricsRowGrid = styled.div`
@@ -191,12 +151,6 @@ const MetricsRowGrid = styled.div`
   background: rgba(0, 0, 0, 0.03);
   border-radius: 16px;
   padding: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.02);
-
-  @media (max-width: 768px) {
-    padding: 8px 10px;
-    border-radius: 12px;
-  }
 `;
 
 const MetricBlock = styled.div`
@@ -204,49 +158,25 @@ const MetricBlock = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
 `;
 
 const MetricLabel = styled.span`
   font-size: 9px;
   color: #8e8e93;
   font-weight: 700;
-  letter-spacing: 0.5px;
   margin-bottom: 2px;
-  user-select: none;
-  white-space: nowrap;
-
-  @media (max-width: 768px) {
-    font-size: 8px;
-  }
-
-  /* On very small screens, the all-caps labels are the first thing
-     that can go without losing meaning — values + icons still tell
-     the story. */
-  @media (max-width: 360px) {
-    font-size: 7px;
-    letter-spacing: 0.2px;
-  }
 `;
 
 const MetricValue = styled.span<{ $highlight?: boolean }>`
   font-size: 18px;
   font-weight: 800;
   color: ${({ $highlight }) => ($highlight ? '#10b981' : '#1c1c1e')};
-
-  @media (max-width: 768px) {
-    font-size: 15px;
-  }
 `;
 
 const VerticalDivider = styled.div`
   width: 1px;
   height: 32px;
   background-color: rgba(0, 0, 0, 0.08);
-
-  @media (max-width: 768px) {
-    height: 24px;
-  }
 `;
 
 const EndButtonAction = styled.button`
@@ -256,30 +186,11 @@ const EndButtonAction = styled.button`
   border-radius: 14px;
   padding: 12px 0;
   color: #ffffff;
-  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #e02e24;
-    box-shadow: 0 6px 16px rgba(255, 59, 48, 0.3);
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    padding: 9px 0;
-    font-size: 12px;
-    border-radius: 11px;
-    gap: 5px;
-  }
+  &:hover { background-color: #e02e24; }
 `;

@@ -9,7 +9,7 @@ export type AgentResponse =
   | { type: 'clarify'; message: string; options?: string[] };
 
 export interface ChatTurn {
-  role: 'user' | 'model';
+  role: 'user' | 'assistant'; // ← was 'model' (Gemini) — Groq uses 'assistant'
   text: string;
 }
 
@@ -26,10 +26,10 @@ interface UseAIAssistantOptions {
 }
 
 export function useAIAssistant({ userLocation, groupMembers }: UseAIAssistantOptions) {
-  const [isThinking, setIsThinking] = useState(false);
+  const [isThinking, setIsThinking]     = useState(false);
   const [lastResponse, setLastResponse] = useState<AgentResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const historyRef = useRef<ChatTurn[]>([]);
+  const [error, setError]               = useState<string | null>(null);
+  const historyRef                      = useRef<ChatTurn[]>([]);
 
   const ask = useCallback(async (query: string): Promise<AgentResponse | null> => {
     setIsThinking(true);
@@ -49,12 +49,11 @@ export function useAIAssistant({ userLocation, groupMembers }: UseAIAssistantOpt
 
       const data: AgentResponse = await res.json();
 
-      // Maintain a short rolling history so follow-ups have context.
-      // Explicitly typed as ChatTurn[] so 'user'/'model' stay literal types
-      // instead of widening to `string` (which broke assignability before).
+      // ChatTurn[] typed explicitly so 'user'/'assistant' stay as literals,
+      // not widened to string (that was the old TS error with 'model').
       const newTurns: ChatTurn[] = [
-        { role: 'user', text: query },
-        { role: 'model', text: JSON.stringify(data) },
+        { role: 'user',      text: query },
+        { role: 'assistant', text: JSON.stringify(data) }, // ← was 'model'
       ];
       historyRef.current = [...historyRef.current, ...newTurns].slice(-10);
 

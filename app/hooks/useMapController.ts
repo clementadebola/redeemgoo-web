@@ -1,6 +1,7 @@
+// hooks/useMapController.ts
 import { useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { fetchInAppRoute } from "../services/routingService";
+import { fetchInAppRoute, RouteMode } from "../services/routingService";
 
 export interface Coordinate {
   latitude: number;
@@ -11,29 +12,21 @@ export interface ActiveRouteState {
   destinationName: string;
   distance: string;
   duration: string;
+  mode: RouteMode;
 }
 
-export function useMapController(
-  userLocation: Coordinate | null
-) {
+export function useMapController(userLocation: Coordinate | null) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [routeCoords, setRouteCoords] = useState<Coordinate[]>([]);
+  const [activeRoute, setActiveRoute] = useState<ActiveRouteState | null>(null);
+  const [loadingRoute, setLoadingRoute] = useState(false);
 
-  const [routeCoords, setRouteCoords] = useState<
-    Coordinate[]
-  >([]);
-
-  const [activeRoute, setActiveRoute] =
-    useState<ActiveRouteState | null>(null);
-
-  const [loadingRoute, setLoadingRoute] =
-    useState(false);
+  // Keep track of the active POI so we can switch modes without asking the AI again
+  const [activePoi, setActivePoi] = useState<{ name: string; lat: number; lng: number } | null>(null);
 
   const calculateInAppRoute = async (
-    poi: {
-      name: string;
-      lat: number;
-      lng: number;
-    }
+    poi: { name: string; lat: number; lng: number },
+    mode: RouteMode = 'foot'
   ) => {
     if (!userLocation) {
       alert("Searching for active location...");
@@ -41,69 +34,50 @@ export function useMapController(
     }
 
     setLoadingRoute(true);
+    setActivePoi(poi);
 
     try {
-      const destination = {
-        latitude: poi.lat,
-        longitude: poi.lng,
-      };
+      const destination = { latitude: poi.lat, longitude: poi.lng };
+      const routeData = await fetchInAppRoute(userLocation, destination, mode);
 
-      const routeData = await fetchInAppRoute(
-        userLocation,
-        destination
-      );
-
-      if (
-        routeData &&
-        routeData.coordinates.length > 0
-      ) {
+      if (routeData && routeData.coordinates.length > 0) {
         setRouteCoords(routeData.coordinates);
 
         setActiveRoute({
           destinationName: poi.name,
           distance: routeData.distance,
           duration: routeData.duration,
+          mode: routeData.mode,
         });
 
-        // Zoom map to fit route
         if (mapRef.current) {
-          const bounds =
-            new mapboxgl.LngLatBounds();
+          const bounds = new mapboxgl.LngLatBounds();
+          bounds.extend([userLocation.longitude, userLocation.latitude]);
+          bounds.extend([destination.longitude, destination.latitude]);
 
-          bounds.extend([
-            userLocation.longitude,
-            userLocation.latitude,
-          ]);
-
-          bounds.extend([
-            destination.longitude,
-            destination.latitude,
-          ]);
-
-          mapRef.current.fitBounds(bounds, {
-            padding: 100,
-            duration: 1500,
-          });
+          mapRef.current.fitBounds(bounds, { padding: 80, duration: 1500 });
         }
       } else {
-        alert(
-          "Unable to calculate route to destination."
-        );
+        alert(`Unable to calculate ${mode} route.`);
       }
     } catch (error) {
       console.error(error);
-
-      alert(
-        "An error occurred while calculating route."
-      );
+      alert("An error occurred while calculating route.");
     }
 
     setLoadingRoute(false);
   };
 
+  const switchRouteMode = async (newMode: RouteMode) => {
+    if (activePoi) {
+      await calculateInAppRoute(activePoi, newMode);
+    }
+  };
+
   const clearActiveRoute = () => {
     setRouteCoords([]);
     setActiveRoute(null);
+    setActivePoi(null);
   };
 
   return {
@@ -112,6 +86,7 @@ export function useMapController(
     activeRoute,
     loadingRoute,
     calculateInAppRoute,
+    switchRouteMode,
     clearActiveRoute,
   };
 }

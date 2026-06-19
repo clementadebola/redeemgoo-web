@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { 
-  collection, doc, setDoc, updateDoc, arrayUnion, 
+  collection, doc, setDoc, updateDoc, arrayUnion, arrayRemove, // ✅ Added arrayRemove here
   query, where, getDocs, onSnapshot, serverTimestamp, addDoc, orderBy, limit 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -36,8 +36,8 @@ export interface GroupItem {
 }
 
 interface GroupState {
-  userGroups: GroupItem[]; // ✅ NEW: Collections array mapping multiple groups
-  currentGroup: GroupItem | null; // Keeps track of the single group active on the map view
+  userGroups: GroupItem[]; 
+  currentGroup: GroupItem | null; 
   groupMembersProfiles: GroupMember[];
   notifications: GroupNotification[];
   searchResults: SearchedUser[];
@@ -50,6 +50,9 @@ interface GroupState {
   generateInviteLink: (groupId: string) => string;
   listenToGroupAndNotifications: (userId: string) => () => void;
   respondToInvite: (notificationId: string, accept: boolean, userId: string, userName: string, userUsername: string) => Promise<void>;
+  
+  // ✅ ADDED: Method signature for removing a member
+  removeMemberFromGroup: (groupId: string, memberId: string) => Promise<void>;
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
@@ -156,7 +159,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     return `${window.location.origin}/signup?groupInvite=${groupId}`;
   },
 
-  // ✅ MODIFIED: Listens globally to EVERY group row card matched to user membership arrays
   listenToGroupAndNotifications: (userId) => {
     set({ isLoading: true });
 
@@ -183,7 +185,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
       set({ userGroups: groupsList });
 
-      // Fallback: Default active map viewport tracking target to first collection element if unassigned
       let activeGroup = get().currentGroup;
       if (!activeGroup || !groupsList.some(g => g.id === activeGroup?.id)) {
         activeGroup = groupsList[0];
@@ -235,6 +236,25 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       await updateDoc(notifRef, { status: accept ? 'accepted' : 'declined' });
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  // ✅ ADDED: The actual implementation for removing a member
+  removeMemberFromGroup: async (groupId, memberId) => {
+    set({ isLoading: true });
+    try {
+      const groupRef = doc(db, 'groups', groupId);
+      // Tells Firebase to remove this specific ID from the members array
+      await updateDoc(groupRef, {
+        members: arrayRemove(memberId)
+      });
+      // You don't need to manually update state here because your onSnapshot 
+      // listener in `listenToGroupAndNotifications` will catch this change 
+      // instantly and auto-update the UI!
+    } catch (err) {
+      console.error("Failed to remove member:", err);
+    } finally {
+      set({ isLoading: false });
     }
   }
 }));

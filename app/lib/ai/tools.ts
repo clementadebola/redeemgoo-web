@@ -61,9 +61,9 @@ async function getRoute(args: {
   if (!result) return { success: false };
   return {
     success: true,
-    distance: result.distance,
-    duration: result.duration,
-    durationMinutes: Math.round(parseFloat(result.duration)) || null,
+    distance: result.distance,           // e.g. "400 m" or "1.2 km"
+    duration: result.duration,           // e.g. "5 mins" or "1 hr 30 min"
+    durationMinutes: result.durationMinutes, // integer — use this, not parseFloat(duration string)
   };
 }
 
@@ -131,9 +131,9 @@ export const TOOL_DECLARATIONS = [
     description:
       'Search Redemption City locations (halls, gates, banks, markets, hospital, etc) by name, category, or loose/colloquial description. Use this whenever the user mentions a place, even vaguely.',
     parameters: {
-      type: 'OBJECT',
+      type: 'object',
       properties: {
-        query: { type: 'STRING', description: 'The place name or description to search for' },
+        query: { type: 'string', description: 'The place name or description to search for' },
       },
       required: ['query'],
     },
@@ -143,12 +143,12 @@ export const TOOL_DECLARATIONS = [
     description:
       'Get the actual driving/walking route distance and duration between two coordinates inside the camp, using the real routing engine.',
     parameters: {
-      type: 'OBJECT',
+      type: 'object',
       properties: {
-        fromLat: { type: 'NUMBER' },
-        fromLng: { type: 'NUMBER' },
-        toLat: { type: 'NUMBER' },
-        toLng: { type: 'NUMBER' },
+        fromLat: { type: 'number' },
+        fromLng: { type: 'number' },
+        toLat:   { type: 'number' },
+        toLng:   { type: 'number' },
       },
       required: ['fromLat', 'fromLng', 'toLat', 'toLng'],
     },
@@ -158,12 +158,12 @@ export const TOOL_DECLARATIONS = [
     description:
       'Get straight-line distance and estimated walking time between two coordinates. Faster than get_route; use for quick estimates or group-member distance checks.',
     parameters: {
-      type: 'OBJECT',
+      type: 'object',
       properties: {
-        fromLat: { type: 'NUMBER' },
-        fromLng: { type: 'NUMBER' },
-        toLat: { type: 'NUMBER' },
-        toLng: { type: 'NUMBER' },
+        fromLat: { type: 'number' },
+        fromLng: { type: 'number' },
+        toLat:   { type: 'number' },
+        toLng:   { type: 'number' },
       },
       required: ['fromLat', 'fromLng', 'toLat', 'toLng'],
     },
@@ -173,9 +173,9 @@ export const TOOL_DECLARATIONS = [
     description:
       'Get camp event/service schedule for today, optionally filtered to a specific POI. Use this to answer questions about timing, like whether the user can make it somewhere before an event starts.',
     parameters: {
-      type: 'OBJECT',
+      type: 'object',
       properties: {
-        poiId: { type: 'STRING', description: 'Optional POI id to filter events to a specific location' },
+        poiId: { type: 'string', description: 'Optional POI id to filter events to a specific location' },
       },
     },
   },
@@ -183,7 +183,7 @@ export const TOOL_DECLARATIONS = [
     name: 'get_group_positions',
     description:
       "Get the current positions and status of the user's circle/group members, including distance from the user and where they're headed. Use this for questions about where friends/group members are.",
-    parameters: { type: 'OBJECT', properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
 ] as const;
 

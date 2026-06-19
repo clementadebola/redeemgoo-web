@@ -6,8 +6,6 @@ import { Sparkles, X, Send, MapPin, Users, Info, HelpCircle } from 'lucide-react
 import { useAIAssistant, AgentResponse } from '../../hooks/useAIAssistant';
 import { POIS } from '../../constants/mapData';
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
-
 const Colors = {
   primary: '#10b981',
   primaryLight: '#e6f7f0',
@@ -19,8 +17,6 @@ const Colors = {
   blue: '#3b82f6',
   blueLight: 'rgba(59,130,246,0.08)',
 };
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
@@ -46,10 +42,9 @@ const SUGGESTED_PROMPTS = [
   'Where can I get food near me?',
   'Can I make it to the evening service in time?',
   'Where is my group right now?',
-  'How far is the bank from here?',
+  'How do I get to the bank?',
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AIAssistantPanel({ userLocation, groupMembers, onNavigate }: AIAssistantPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -308,7 +303,7 @@ const Panel = styled.div`
   background: ${Colors.white};
   border-radius: 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-  z-index: 800;
+  z-index: 1200;
   display: flex;
   flex-direction: column;
   overflow: hidden;

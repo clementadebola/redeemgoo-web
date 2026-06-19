@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useRouter, useSearchParams } from 'next/navigation'; // ✅ Added search params hook
+import { useRouter, useSearchParams } from 'next/navigation'; 
 import { 
   Users, Check, X, Bell, UserCheck, 
-  ShieldAlert, MapPin, UserCheck2, ArrowRight, ArrowLeft 
+  ShieldAlert, MapPin, UserCheck2, ArrowRight, ArrowLeft,
+  UserMinus, Settings, Trash2 
 } from 'lucide-react';
 
 import { useAuthStore } from '../../store/authStore';
@@ -35,8 +36,6 @@ export default function GroupsManagerPage() {
 
   const [groupName, setGroupName] = useState('');
 
-  // ✅ NEW CHECK: Detects if the current URL context explicitly asks to mount the group creation tool
-  // Matches '/dashboard/groups?action=create' or similar explicit path handlers
   const isCreationMode = searchParams.get('action') === 'create';
 
   useEffect(() => {
@@ -52,7 +51,6 @@ export default function GroupsManagerPage() {
     await store.createGroup(groupName.trim(), user.uid, profile.displayName, profile.username);
     setGroupName('');
     
-    // Once created, clear the action query parameters and drop them back to home dashboard frames
     router.push('/dashboard');
   };
 
@@ -61,7 +59,23 @@ export default function GroupsManagerPage() {
     return await store.inviteUserByUsername(targetUsername, user.uid, profile.displayName);
   };
 
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    // ✅ FIXED: Added a strict null check here to satisfy TypeScript
+    if (!store.currentGroup) return;
+
+    if (confirm(`Are you sure you want to remove ${memberName} from this circle?`)) {
+      try {
+        if (store.removeMemberFromGroup) {
+          await store.removeMemberFromGroup(store.currentGroup.id, memberId);
+        }
+      } catch (error) {
+        console.error("Failed to remove member:", error);
+      }
+    }
+  };
+
   const isAloneInGroup = store.groupMembersProfiles.length <= 1;
+  const isAdmin = store.currentGroup?.ownerId === user?.uid;
 
   return (
     <ContainerWrapper>
@@ -98,10 +112,8 @@ export default function GroupsManagerPage() {
       )}
 
       {/* ─── MODIFIED MODULAR ROUTER GRID SECTION ─── */}
-      {/* If creation flag query exists OR they have zero groups built yet, render form */}
       {isCreationMode || !store.currentGroup ? (
         <InteractiveFormCard onSubmit={handleCreateGroup}>
-          {/* Back button option available only if they already have background active pipelines */}
           {store.userGroups?.length > 0 && (
             <BackButton type="button" onClick={() => router.push('/dashboard')}>
               <ArrowLeft size={16} />
@@ -135,14 +147,25 @@ export default function GroupsManagerPage() {
           <MainSectionColumn>
             <HeaderControlRow>
               <div>
-                <h1 style={{ fontSize: '20px', color: '#000000', fontWeight: '800', margin: 0 }}>{store.currentGroup.name}</h1>
+                {/* ✅ FIXED: Added optional chaining to properly handle TS strict mode */}
+                <h1 style={{ fontSize: '20px', color: '#000000', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {store.currentGroup?.name} 
+                  {isAdmin && <AdminBadge>Admin</AdminBadge>}
+                </h1>
                 <p style={{ color: Colors.textSecondary, margin: '2px 0 0 0', fontSize: '14px' }}>
                   Active tracking metrics and circle geofencing alerts.
                 </p>
               </div>
-              <SecondaryPanelButton onClick={() => router.push('/dashboard')}>
-                Exit to Home
-              </SecondaryPanelButton>
+              <ActionButtonsGroup>
+                {isAdmin && (
+                  <SecondaryPanelButton onClick={() => alert('Group settings configuration modal coming soon.')} title="Group Settings">
+                    <Settings size={16} />
+                  </SecondaryPanelButton>
+                )}
+                <SecondaryPanelButton onClick={() => router.push('/dashboard')}>
+                  Exit
+                </SecondaryPanelButton>
+              </ActionButtonsGroup>
             </HeaderControlRow>
 
             <TraceMapBarButton type="button" onClick={() => router.push('/dashboard/map')}>
@@ -166,10 +189,20 @@ export default function GroupsManagerPage() {
                     <span className="name">{member.displayName} {member.uid === user?.uid && '(You)'}</span>
                     <span className="username">@{member.username}</span>
                   </MemberMeta>
+                  
                   <GeofenceBadge $outside={member.isOutsideGeofence}>
                     {member.isOutsideGeofence ? <ShieldAlert size={12} /> : null}
                     {member.isOutsideGeofence ? 'Outside Campus' : 'Safe Inside'}
                   </GeofenceBadge>
+
+                  {isAdmin && member.uid !== user?.uid && (
+                    <RemoveMemberButton 
+                      title={`Remove ${member.displayName}`} 
+                      onClick={() => handleRemoveMember(member.uid, member.displayName)}
+                    >
+                      <UserMinus size={16} />
+                    </RemoveMemberButton>
+                  )}
                 </RosterItemCard>
               ))}
 
@@ -189,16 +222,34 @@ export default function GroupsManagerPage() {
             </RosterGridList>
           </MainSectionColumn>
 
-          {/* Invitation Side Column Panels Wrapper */}
           <SideSectionColumn>
             <InviteUserCard onInvite={handleInviteAction} />
+            
             <InviteGuestCard 
-              groupId={store.currentGroup.id} 
+              // ✅ FIXED: Added optional chaining and fallback empty strings
+              groupId={store.currentGroup?.id || ''} 
               generateInviteLink={store.generateInviteLink} 
-              // Added explicit fallback property check mechanism
-              //@ts-ignore 
-              currentGroupName={store.currentGroup.name}
+              currentGroupName={store.currentGroup?.name || ''}
             />
+
+            {isAdmin && (
+              <AdminControlsCard>
+                <SectionHeading style={{ color: Colors.error, fontSize: '14px', marginBottom: '8px' }}>
+                  Admin Danger Zone
+                </SectionHeading>
+                <p style={{ fontSize: '12px', color: Colors.textSecondary, margin: '0 0 16px 0' }}>
+                  Irreversible administrative actions for group lifecycle management.
+                </p>
+                <ActionButton 
+                  $variant="danger" 
+                  style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
+                  onClick={() => confirm('Are you sure you want to disband this group permanently?')}
+                >
+                  <Trash2 size={16} /> Disband Entire Circle
+                </ActionButton>
+              </AdminControlsCard>
+            )}
+
           </SideSectionColumn>
         </GroupDashboardLayout>
       )}
@@ -206,7 +257,50 @@ export default function GroupsManagerPage() {
   );
 }
 
-// ─── ADDED NEW ALIGNMENT STYLES ───────────────────────────────────────────
+// ─── ADDED NEW STYLES FOR ADMIN FEATURES ──────────────────────────────────
+const AdminBadge = styled.span`
+  background-color: ${Colors.primaryLight};
+  color: ${Colors.primary};
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+`;
+
+const RemoveMemberButton = styled.button`
+  background: ${Colors.errorLight};
+  color: ${Colors.error};
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;
+  flex-shrink: 0;
+
+  &:hover {
+    background: ${Colors.error};
+    color: white;
+  }
+`;
+
+const AdminControlsCard = styled.div`
+  background: ${Colors.white};
+  border: 1.5px solid ${Colors.errorLight};
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+`;
+
+// ─── EXISTING ALIGNMENT STYLES ───────────────────────────────────────────
 const HeaderControlRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -216,6 +310,9 @@ const HeaderControlRow = styled.div`
 `;
 
 const SecondaryPanelButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #f2f2f7;
   color: #1c1c1e;
   border: none;
@@ -244,7 +341,7 @@ const BackButton = styled.button`
   &:hover { color: ${Colors.textPrimary}; }
 `;
 
-// Keep your existing layout component style blocks below completely untouched...
+// ─── CORE LAYOUT STYLES ───────────────────────────────────────────
 const ContainerWrapper = styled.div`
   padding: 32px;
   max-width: 1000px;

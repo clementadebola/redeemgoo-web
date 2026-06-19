@@ -10,11 +10,10 @@ import { IoNavigate, IoAlertCircle, IoArrowBack } from "react-icons/io5";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { useAuthStore } from "../../store/authStore";
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-} from "../../constants/theme";
+import { Colors, Spacing, BorderRadius } from "../../constants/theme";
+
+// ✅ Import the new modal component
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal"; // Adjust path as needed
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +22,9 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // ✅ State to control the modal visibility
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const [errors, setErrors] = useState<{
     email?: string;
@@ -48,7 +50,6 @@ export default function LoginPage() {
   };
 
   const handleLogin = async (e: React.FormEvent) => {
-    // Prevent default HTML form reload behavior
     e.preventDefault();
     clearError();
 
@@ -85,10 +86,7 @@ export default function LoginPage() {
         <Card>
           {error && (
             <ErrorBanner>
-              <IoAlertCircle
-                size={16}
-                color={Colors.error}
-              />
+              <IoAlertCircle size={16} color={Colors.error} />
               <ErrorText>{error}</ErrorText>
             </ErrorBanner>
           )}
@@ -99,9 +97,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
               type="email"
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
             />
 
@@ -110,17 +106,16 @@ export default function LoginPage() {
               placeholder="Enter your password"
               type="password"
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e) => setPassword(e.target.value)}
               error={errors.password}
             />
           </Fields>
 
           <ForgotRow>
-            <ForgotLink href="#">
+            {/* ✅ Changed from Link to a button trigger */}
+            <ForgotButton type="button" onClick={() => setIsForgotModalOpen(true)}>
               Forgot password?
-            </ForgotLink>
+            </ForgotButton>
           </ForgotRow>
 
           <Button
@@ -130,21 +125,23 @@ export default function LoginPage() {
           />
         </Card>
 
-        {/* Bottom Route Toggle Panel */}
         <Footer>
-          <FooterText>
-            Don't have an account?
-          </FooterText>
-          <SignupLink href="/signup">
-            Create account
-          </SignupLink>
+          <FooterText>Don't have an account?</FooterText>
+          <SignupLink href="/signup">Create account</SignupLink>
         </Footer>
       </Content>
+
+      {/* ✅ Mount the Modal at the bottom of the container */}
+      <ForgotPasswordModal 
+        isOpen={isForgotModalOpen} 
+        onClose={() => setIsForgotModalOpen(false)} 
+        initialEmail={email} // Passes their typed email so they don't have to retype it
+      />
     </Container>
   );
 }
 
-
+// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
 
 const Container = styled.main`
   min-height: 100vh;
@@ -154,7 +151,6 @@ const Container = styled.main`
   align-items: center;
   padding: ${Spacing.xl}px;
 `;
-
 
 const Content = styled.form`
   width: 100%;
@@ -264,11 +260,16 @@ const ForgotRow = styled.div`
   justify-content: flex-end;
 `;
 
-const ForgotLink = styled(Link)`
+// ✅ Changed from a Link to a styled button to trigger the modal without reloading
+const ForgotButton = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
   color: ${Colors.primary};
   font-weight: 600;
-  text-decoration: none;
   font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
   &:hover { text-decoration: underline; }
 `;
 

@@ -17,6 +17,14 @@ const MAP_STYLES: Record<MapStyle, string> = {
   dark: 'mapbox://styles/mapbox/dark-v11',
 };
 
+// ─── GEO-FENCE DEFINITION FOR REDEMPTION CITY ───
+const REDEMPTION_CAMP_BOUNDS = {
+  minLat: 6.7500,
+  maxLat: 6.8300,
+  minLng: 3.4400,
+  maxLng: 3.4700,
+};
+
 interface MapComponentProps {
   mapRef: React.RefObject<any>;
   viewport: { latitude: number; longitude: number; zoom: number };
@@ -33,15 +41,37 @@ interface MapComponentProps {
   groupMembersLocations: Record<string, { latitude: number; longitude: number; displayName: string; activeDestination?: any }>;
 }
 
-function getCategoryStyle(category: string): { icon: string; color: string } {
+// ─── PROFESSIONAL SVG ICONS REPLACING EMOJIS ───
+function getCategoryStyle(category: string): { svg: string; color: string } {
   const c = category.toLowerCase();
-  if (c.includes('gate')) return { icon: '🚪', color: '#f97316' };
-  if (c.includes('market')) return { icon: '🛒', color: '#eab308' };
-  if (c.includes('bank')) return { icon: '🏦', color: '#06b6d4' };
-  if (c.includes('hospital')) return { icon: '🏥', color: '#ef4444' };
-  if (c.includes('education')) return { icon: '🎓', color: '#8b5cf6' };
-  if (c.includes('auditorium')) return { icon: '🏛️', color: '#3b82f6' };
-  return { icon: '🏢', color: '#3b82f6' };
+  const iconProps = `width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
+
+  if (c.includes('gate')) return { 
+    svg: `<svg ${iconProps}><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14" /><path d="M2 20h20" /><path d="M14 12v.01" /></svg>`, 
+    color: '#f97316' 
+  };
+  if (c.includes('market')) return { 
+    svg: `<svg ${iconProps}><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>`, 
+    color: '#eab308' 
+  };
+  if (c.includes('bank')) return { 
+    svg: `<svg ${iconProps}><line x1="3" x2="21" y1="22" y2="22" /><line x1="6" x2="6" y1="18" y2="11" /><line x1="10" x2="10" y1="18" y2="11" /><line x1="14" x2="14" y1="18" y2="11" /><line x1="18" x2="18" y1="18" y2="11" /><polygon points="12 2 20 7 4 7" /></svg>`, 
+    color: '#06b6d4' 
+  };
+  if (c.includes('hospital')) return { 
+    svg: `<svg ${iconProps}><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="12" x2="12" y1="8" y2="16" /><line x1="8" x2="16" y1="12" y2="12" /></svg>`, 
+    color: '#ef4444' 
+  };
+  if (c.includes('auditorium') || c.includes('arena')) return { 
+    svg: `<svg ${iconProps}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>`, 
+    color: '#3b82f6' 
+  };
+  
+  // Default Style (Building)
+  return { 
+    svg: `<svg ${iconProps}><rect width="16" height="20" x="4" y="2" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M12 6h.01" /><path d="M12 10h.01" /><path d="M12 14h.01" /><path d="M16 10h.01" /><path d="M16 14h.01" /><path d="M8 10h.01" /><path d="M8 14h.01" /></svg>`, 
+    color: '#8e8e93' 
+  };
 }
 
 export default function MapComponent({
@@ -81,9 +111,13 @@ export default function MapComponent({
         border: 2px solid #3b82f6; animation: avatarPulse 2.5s infinite ease-out; pointer-events: none;
       }
       .mapboxgl-popup-content {
-        border-radius: 14px !important;
-        padding: 12px 16px !important;
+        border-radius: 16px !important;
+        padding: 14px 18px !important;
         box-shadow: 0 16px 40px rgba(0,0,0,0.15) !important;
+        border: 1px solid rgba(0,0,0,0.05);
+      }
+      .mapboxgl-popup-close-button {
+        display: none;
       }
     `;
     document.head.appendChild(styleSheet);
@@ -165,6 +199,32 @@ export default function MapComponent({
       const clickLng = e.lngLat.lng;
       const clickLat = e.lngLat.lat;
 
+      // ─── GEOFENCE CHECK ───
+      const isInsideCamp = 
+        clickLat >= REDEMPTION_CAMP_BOUNDS.minLat && clickLat <= REDEMPTION_CAMP_BOUNDS.maxLat &&
+        clickLng >= REDEMPTION_CAMP_BOUNDS.minLng && clickLng <= REDEMPTION_CAMP_BOUNDS.maxLng;
+
+      if (!isInsideCamp) {
+        new mapboxgl.Popup({ offset: [0, -15], className: 'custom-navigation-popup' })
+          .setLngLat(e.lngLat)
+          .setHTML(`
+            <div style="font-family: -apple-system, sans-serif; text-align: center; min-width: 170px;">
+              <div style="margin-bottom: 8px; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,59,48,0.1); border-radius: 50%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <strong style="color: #1c1c1e; font-size: 14px; display: block; line-height: 1.3;">Outside Redemption City</strong>
+              <p style="margin: 6px 0 0 0; font-size: 12px; color: #8e8e93; font-weight: 500; line-height: 1.4;">
+                This location is outside the camp layout. Let's return to the campgrounds!
+              </p>
+            </div>
+          `)
+          .addTo(map);
+          
+        if (onMapClick) onMapClick(clickLat, clickLng);
+        return; // Halt execution so we don't calculate a random building route
+      }
+
+      // ─── INSIDE CAMP LOGIC ───
       const features = map.queryRenderedFeatures(e.point, { layers: map.getLayer('3d-buildings') ? ['3d-buildings'] : [] });
 
       let targetedPoi = POIS[0];
@@ -191,12 +251,7 @@ export default function MapComponent({
         targetCategory = targetedPoi.category;
       }
 
-      let roofColor = '#10b981';
-      const cat = targetCategory.toLowerCase();
-      if (cat.includes('gate')) roofColor = '#f97316';       
-      else if (cat.includes('auditorium')) roofColor = '#3b82f6'; 
-      else if (cat.includes('market')) roofColor = '#eab308';     
-      else if (cat.includes('bank')) roofColor = '#06b6d4';       
+      const { color: roofColor } = getCategoryStyle(targetCategory);
 
       if (map.getLayer('3d-buildings') && features && features.length > 0) {
         map.setPaintProperty('3d-buildings', 'fill-extrusion-color', [
@@ -271,6 +326,7 @@ export default function MapComponent({
     map.jumpTo({ center: [viewport.longitude, viewport.latitude], zoom: viewport.zoom });
   }, [viewport.latitude, viewport.longitude, viewport.zoom]);
 
+  // ─── POI MARKER RENDERING WITH NEW CLEAN ICONS ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -279,20 +335,16 @@ export default function MapComponent({
     markersRef.current = [];
 
     POIS.forEach((poi) => {
-      let icon = '🏢';
-      let themeColor = '#3b82f6';
-      const c = poi.category.toLowerCase();
-      if (c.includes('gate')) { icon = '🚪'; themeColor = '#f97316'; }
-      else if (c.includes('market')) { icon = '🛒'; themeColor = '#eab308'; }
-      else if (c.includes('bank')) { icon = '🏦'; themeColor = '#06b6d4'; }
-      else if (c.includes('hospital')) { icon = '🏥'; themeColor = '#ef4444'; }
+      const { svg, color } = getCategoryStyle(poi.category);
 
       const el = document.createElement('div');
       el.style.cursor = 'pointer';
       el.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center;">
-          <div style="font-size: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));">${icon}</div>
-          <span style="background: rgba(255,255,255,0.95); color: #1c1c1e; padding: 3px 6px; border-radius: 6px; font-size: 9px; font-weight: 800; border-top: 2px solid ${themeColor}; box-shadow: 0 4px 10px rgba(0,0,0,0.06); white-space: nowrap; margin-top: 1px;">
+        <div style="display: flex; flex-direction: column; align-items: center; transition: transform 0.2s ease;">
+          <div style="width: 28px; height: 28px; background: ${color}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 2px solid white;">
+            ${svg}
+          </div>
+          <span style="background: rgba(255,255,255,0.95); color: #1c1c1e; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; border-top: 2px solid ${color}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); white-space: nowrap; margin-top: 4px;">
             ${poi.name.split('(')[0].trim()}
           </span>
         </div>
@@ -304,6 +356,7 @@ export default function MapComponent({
     });
   }, [locationStatus, activeRoute]);
 
+  // ─── LIVE LOCATION AVATARS ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -314,7 +367,7 @@ export default function MapComponent({
       
       Object.assign(userDomNode.style, {
         width: '42px', height: '42px', backgroundColor: '#10b981', border: '3px solid #ffffff',
-        borderRadius: '50%', display: 'flex', alignItems: 'center', justifycontent: 'center',
+        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', // Fixed typo here
         color: '#ffffff', boxShadow: '0 10px 24px rgba(16,185,129,0.4)', cursor: 'pointer',
         transformOrigin: 'bottom center', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: '999'
       });

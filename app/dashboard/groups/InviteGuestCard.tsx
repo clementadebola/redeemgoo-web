@@ -12,12 +12,14 @@ const Colors = {
   success: '#34c759'
 };
 
+// ✅ FIXED: Added currentGroupName to the TypeScript interface matching the parent passing it
 interface InviteGuestCardProps {
   groupId: string;
   generateInviteLink: (id: string) => string;
+  currentGroupName?: string; 
 }
 
-export default function InviteGuestCard({ groupId, generateInviteLink }: InviteGuestCardProps) {
+export default function InviteGuestCard({ groupId, generateInviteLink, currentGroupName }: InviteGuestCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
@@ -31,7 +33,8 @@ export default function InviteGuestCard({ groupId, generateInviteLink }: InviteG
     <InteractiveFormCard>
       <SectionHeading><Link2 size={18} /> Invite External Guests</SectionHeading>
       <p style={{ margin: 0, fontSize: '12px', color: Colors.textSecondary, lineHeight: '1.4' }}>
-        Share this magic tracking authorization link with users who do not have an active account yet. It will direct them through registration straight into your tracking loop.
+        Share this magic tracking authorization link with users who do not have an active account yet. It will direct them through registration straight into your tracking loop 
+        {currentGroupName ? ` for ${currentGroupName}` : ''}.
       </p>
       <SubmitButton 
         type="button" 

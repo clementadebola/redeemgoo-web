@@ -1,15 +1,12 @@
 // app/api/ai/group-insight/route.ts
-//
-// Lightweight, no-tool-loop endpoint: takes already-computed member distances
-// (GroupMapOverlay does the math client-side already) and asks Gemini to turn
-// them into one short, natural-language summary. Cheaper and faster than the
-// full agent loop in /api/ai/query — this is a single-shot generation call.
+// Lightweight single-shot Groq call — no tool loop, just natural language
+// summary of group member positions. Only fires when real drift exists.
 
 import { NextRequest, NextResponse } from 'next/server';
+import Groq from 'groq-sdk';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = 'gemini-2.5-flash'; // gemini-2.0-flash was deprecated June 1, 2026
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = 'llama-3.1-8b-instant'; // faster/cheaper model is fine here — no tool use needed
 
 interface MemberSnapshot {
   displayName: string;
@@ -19,9 +16,7 @@ interface MemberSnapshot {
 }
 
 export async function POST(req: NextRequest) {
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ message: null });
-  }
+  if (!process.env.GROQ_API_KEY) return NextResponse.json({ message: null });
 
   let members: MemberSnapshot[];
   try {
@@ -33,39 +28,32 @@ export async function POST(req: NextRequest) {
 
   if (!members.length) return NextResponse.json({ message: null });
 
-  // Only bother calling the model if something's actually notable —
-  // saves API calls and avoids "everything's fine" filler chatter.
   const drifting = members.filter((m) => m.distanceFromYouMetres > 600);
-  if (drifting.length === 0) {
-    return NextResponse.json({ message: null });
-  }
+  if (drifting.length === 0) return NextResponse.json({ message: null });
 
   const summaryInput = drifting
-    .map((m) => `${m.displayName}: ${Math.round(m.distanceFromYouMetres)}m from you, ${Math.round(m.distanceFromCampMetres)}m from camp center${m.headingTo ? `, heading to ${m.headingTo}` : ''}`)
+    .map((m) =>
+      `${m.displayName}: ${Math.round(m.distanceFromYouMetres)}m from you, ` +
+      `${Math.round(m.distanceFromCampMetres)}m from camp center` +
+      (m.headingTo ? `, heading to ${m.headingTo}` : ''),
+    )
     .join('\n');
 
-  const prompt = `Group members who are far from the user, at Redemption City camp:
-${summaryInput}
-
-Write ONE short, friendly, actionable sentence (max 22 words) summarizing this for the user. Suggest a concrete next step if relevant (e.g. send a pin, call them). No preamble, just the sentence.`;
+  const prompt = `Group members who are far from the user at Redemption City camp:\n${summaryInput}\n\nWrite ONE short, friendly, actionable sentence (max 22 words) summarising this. Suggest a concrete next step if relevant. No preamble.`;
 
   try {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 60 },
-      }),
+    const response = await groq.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.4,
+      max_tokens: 80,
     });
 
-    if (!res.ok) return NextResponse.json({ message: null });
-
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text = response.choices[0]?.message?.content?.trim();
     return NextResponse.json({ message: text || null });
-  } catch (err) {
-    console.error('group-insight error:', err);
+
+  } catch (err: any) {
+    console.error('group-insight Groq error:', err?.message ?? err);
     return NextResponse.json({ message: null });
   }
 }
