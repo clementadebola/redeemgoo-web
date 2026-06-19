@@ -369,7 +369,7 @@ export default function MapComponent({
         width: '42px', height: '42px', backgroundColor: '#10b981', border: '3px solid #ffffff',
         borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', // Fixed typo here
         color: '#ffffff', boxShadow: '0 10px 24px rgba(16,185,129,0.4)', cursor: 'pointer',
-        transformOrigin: 'bottom center', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: '999'
+        transformOrigin: 'bottom center', transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: '500'
       });
 
       liveAvatarsRef.current['root-user'] = new mapboxgl.Marker({ element: userDomNode })

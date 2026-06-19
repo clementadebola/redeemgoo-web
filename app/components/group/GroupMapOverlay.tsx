@@ -423,7 +423,7 @@ const Panel = styled.div<{ $hasWarning: boolean }>`
   border: 1.5px solid ${({ $hasWarning }) => ($hasWarning ? Colors.error : Colors.border)};
   border-radius: 20px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-  z-index: 110;
+  z-index: 600;
   overflow: hidden;
   transition: border-color 0.3s ease;
 
