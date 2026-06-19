@@ -609,6 +609,10 @@ const AdminNavigationSidebar = styled.aside<{ $isOpen: boolean }>`
   background-color: ${Colors.adminCard};
   border-right: 1px solid ${Colors.border};
   padding: 24px;
+  
+  /* ✅ FIXED: Aggressive bottom padding to clear iPhone notches & browser bars */
+  padding-bottom: max(48px, env(safe-area-inset-bottom)); 
+  
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -616,7 +620,11 @@ const AdminNavigationSidebar = styled.aside<{ $isOpen: boolean }>`
   top: 64px;
   left: 0;
   width: 100%;
-  height: calc(100vh - 64px);
+  
+  /* ✅ FIXED: Use Dynamic Viewport Height (dvh) so it doesn't hide behind mobile toolbars */
+  height: calc(100vh - 64px); /* Fallback for older browsers */
+  height: calc(100dvh - 64px); 
+  
   z-index: 100;
   transform: translateX(${({ $isOpen }) => ($isOpen ? '0' : '-100%')});
   transition: transform 0.2s ease-in-out;
@@ -625,6 +633,7 @@ const AdminNavigationSidebar = styled.aside<{ $isOpen: boolean }>`
     position: static;
     transform: none;
     height: 100vh;
+    padding-bottom: 24px; /* Reset padding for desktop */
   }
 `;
 
@@ -685,7 +694,15 @@ const DisconnectSessionButton = styled.button`
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  &:hover { border-color: ${Colors.error}; color: ${Colors.error}; background: rgba(239, 68, 68, 0.05); }
+  
+  /* ✅ FIXED: Added a little extra margin to push it up visually */
+  margin-bottom: 40px; 
+  
+  &:hover { 
+    border-color: ${Colors.error}; 
+    color: ${Colors.error}; 
+    background: rgba(239, 68, 68, 0.05); 
+  }
 `;
 
 const MainWorkspaceBodyContent = styled.main`
