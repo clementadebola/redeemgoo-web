@@ -5,10 +5,9 @@ import Link from 'next/link';
 import styled, { keyframes } from 'styled-components';
 import { 
   Compass, Navigation2, MapPin, Search, Milestone, ArrowRight, 
-  Layers, Users, Cpu, ChevronDown, 
-  HelpCircle, Info, MessageSquare
+  Layers, Users, Cpu, ChevronDown, HelpCircle, Info, MessageSquare,
+  Bot, Sparkles, Navigation
 } from 'lucide-react';
-// ✅ FIXED: Updated to the modern, official 'lenis' package namespace
 import Lenis from 'lenis';
 
 // ─── ANIMATIONS (FOR THE ZERO-GRAVITY INTERACTIVE EFFECT) ───────────────────
@@ -30,10 +29,15 @@ const pulseDot = keyframes`
   100% { transform: scale(0.95); opacity: 0.5; }
 `;
 
+const typingPulse = keyframes`
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-3px); opacity: 1; }
+`;
+
 
 const Viewport = styled.div`
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   background-color: #fafafa;
   color: #111111;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -77,6 +81,7 @@ const TextLink = styled(Link)`
   text-decoration: none;
   transition: color 0.2s;
   &:hover { color: #111111; }
+  @media (max-width: 576px) { display: none; }
 `;
 
 const NavButton = styled(Link)`
@@ -116,17 +121,19 @@ const HeroLeft = styled.div`
   @media (max-width: 968px) { align-items: center; }
 `;
 
-const PillBadge = styled.div`
-  background-color: #e6f7f0;
+const PillBadge = styled.div<{ $dark?: boolean }>`
+  background-color: ${({ $dark }) => ($dark ? 'rgba(16, 185, 129, 0.15)' : '#e6f7f0')};
   color: #10b981;
   padding: 6px 14px;
   border-radius: 50px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   width: fit-content;
   display: flex;
   align-items: center;
   gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 const MainHeading = styled.h1`
@@ -141,12 +148,13 @@ const MainHeading = styled.h1`
   @media (max-width: 576px) { font-size: 38px; }
 `;
 
-const SubText = styled.p`
+const SubText = styled.p<{ $dark?: boolean }>`
   font-size: 18px;
   line-height: 1.6;
-  color: #555555;
+  color: ${({ $dark }) => ($dark ? '#a1a1aa' : '#555555')};
   margin: 0;
   max-width: 520px;
+  @media (max-width: 576px) { font-size: 16px; }
 `;
 
 const ActionGroup = styled.div`
@@ -173,6 +181,7 @@ const PrimaryCTA = styled(Link)`
   gap: 8px;
   box-shadow: 0 10px 20px rgba(16, 185, 129, 0.15);
   transition: transform 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 
   &:hover {
     transform: translateY(-2px);
@@ -191,6 +200,7 @@ const SecondaryCTA = styled(Link)`
   font-size: 15px;
   text-decoration: none;
   transition: background-color 0.2s;
+  box-sizing: border-box;
 
   &:hover { background-color: #f2f2f7; }
   @media (max-width: 576px) { width: 100%; justify-content: center; }
@@ -199,11 +209,11 @@ const SecondaryCTA = styled(Link)`
 const HeroRight = styled.div`
   position: relative;
   width: 100%;
-  height: 480px;
+  min-height: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
-  @media (max-width: 968px) { height: 380px; margin-top: 24px; }
+  @media (max-width: 968px) { min-height: 380px; margin-top: 24px; }
 `;
 
 const MapCanvasMock = styled.div`
@@ -217,6 +227,7 @@ const MapCanvasMock = styled.div`
   position: relative;
   overflow: hidden;
   animation: ${float} 6s ease-in-out infinite;
+  box-sizing: border-box;
 
   &::before {
     content: '';
@@ -231,8 +242,13 @@ const MapCanvasMock = styled.div`
     background-size: 60px 60px;
     opacity: 0.7;
   }
+
+  @media (max-width: 576px) {
+    height: 320px; /* Scaled down slightly to fit smaller screens perfectly */
+  }
 `;
 
+// ✅ FIXED: Restored for mobile view with strict scaling and boundary constraints
 const FloatingElement = styled.div<{ $delay?: boolean }>`
   position: absolute;
   background: white;
@@ -246,6 +262,14 @@ const FloatingElement = styled.div<{ $delay?: boolean }>`
   font-weight: 600;
   animation: ${({ $delay }) => ($delay ? floatDelayed : float)} 5s ease-in-out infinite;
   z-index: 2;
+  white-space: nowrap;
+
+  @media (max-width: 576px) {
+    padding: 8px 12px;
+    font-size: 11px;
+    gap: 6px;
+    transform: scale(0.85); /* Scales down mathematically instead of hiding */
+  }
 `;
 
 const MapHUDCard = styled.div`
@@ -301,23 +325,27 @@ const SectionHeader = styled.div`
   gap: 12px;
 `;
 
-const SectionTitle = styled.h2`
+const SectionTitle = styled.h2<{ $dark?: boolean }>`
   font-size: 38px;
   font-weight: 800;
   letter-spacing: -1px;
   margin: 0;
-  color: #111111;
+  color: ${({ $dark }) => ($dark ? '#ffffff' : '#111111')};
+  @media (max-width: 576px) { font-size: 28px; }
 `;
 
+// ✅ FIXED: Forced strict width boundaries to prevent CSS grid blowout overlap
 const BentoGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* The minmax(0, 1fr) forces bounds */
   gap: 24px;
+  width: 100%;
   
-  @media(max-width: 968px) { grid-template-columns: repeat(2, 1fr); }
-  @media(max-width: 640px) { grid-template-columns: 1fr; }
+  @media(max-width: 968px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media(max-width: 640px) { grid-template-columns: minmax(0, 1fr); }
 `;
 
+// ✅ FIXED: Added min-width and box-sizing to prevent content from expanding the card outwards
 const BentoCard = styled.div<{ $big?: boolean }>`
   background: #ffffff;
   border: 1px solid #e5e5ea;
@@ -329,6 +357,8 @@ const BentoCard = styled.div<{ $big?: boolean }>`
   gap: 24px;
   grid-column: ${({ $big }) => ($big ? 'span 2' : 'span 1')};
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+  min-width: 0; /* Critical fix for grid blowout */
 
   &:hover {
     transform: translateY(-4px);
@@ -347,6 +377,7 @@ const IconCircle = styled.div<{ $bg: string; $color: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 `;
 
 const CardTextContent = styled.div`
@@ -354,8 +385,156 @@ const CardTextContent = styled.div`
   flex-direction: column;
   gap: 8px;
   
-  h3 { font-size: 18px; font-weight: 700; margin: 0; color: #111111; }
-  p { font-size: 14px; color: #666666; line-height: 1.5; margin: 0; }
+  h3 { font-size: 18px; font-weight: 700; margin: 0; color: #111111; word-wrap: break-word; }
+  p { font-size: 14px; color: #666666; line-height: 1.5; margin: 0; word-wrap: break-word; }
+`;
+
+// ─── SECTION: AI COPILOT (DARK THEME) ──────────────────────────────────
+const AiSection = styled.section`
+  max-width: 1200px;
+  width: calc(100% - 32px);
+  margin: 40px auto;
+  background-color: #111111;
+  border-radius: 36px;
+  padding: 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  color: #ffffff;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+  box-sizing: border-box;
+
+  @media(max-width: 968px) {
+    grid-template-columns: 1fr;
+    padding: 40px 24px;
+    gap: 48px;
+    border-radius: 28px;
+  }
+`;
+
+const AiMockupContainer = styled.div`
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const PhoneFrame = styled.div`
+  width: 100%;
+  max-width: 340px; 
+  min-height: 460px; 
+  background: #1c1c1e;
+  border-radius: 32px;
+  border: 6px solid #333333;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  position: relative;
+  box-sizing: border-box;
+  animation: ${float} 6s ease-in-out infinite;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100px; height: 20px;
+    background: #333333;
+    border-radius: 0 0 12px 12px;
+  }
+
+  @media (max-width: 576px) {
+    min-height: auto;
+    padding-top: 32px;
+  }
+`;
+
+const ChatBubbleUser = styled.div`
+  align-self: flex-end;
+  background: #10b981;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 16px 16px 4px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  max-width: 85%;
+  line-height: 1.4;
+  box-sizing: border-box;
+  animation: ${floatDelayed} 5s infinite ease-in-out;
+`;
+
+const ChatBubbleAi = styled.div`
+  align-self: flex-start;
+  background: #2c2c2e;
+  color: #f4f4f5;
+  padding: 14px 16px;
+  border-radius: 16px 16px 16px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  max-width: 90%;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  animation: ${float} 5.5s infinite ease-in-out;
+  border: 1px solid #3a3a3c;
+`;
+
+const ChatTypingIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+
+  span {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: ${typingPulse} 1.4s infinite ease-in-out;
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+`;
+
+const GeneratedRouteCard = styled.div`
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  box-sizing: border-box;
+
+  .card-header { display: flex; justify-content: space-between; align-items: center; }
+  .title { font-weight: 700; font-size: 14px; color: #10b981; }
+  .dist { font-size: 11px; color: #a1a1aa; font-weight: 600; white-space: nowrap; }
+  
+  .route-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+    cursor: pointer;
+  }
 `;
 
 // ─── SECTION: LIVE TELEMETRY / CIRCLES ──────────────────────────────────
@@ -369,11 +548,14 @@ const SplitSection = styled(SectionWrapper)`
   padding: 64px;
   margin-top: 40px;
   margin-bottom: 40px;
+  box-sizing: border-box;
 
   @media(max-width: 968px) {
     grid-template-columns: 1fr;
-    padding: 32px;
+    padding: 40px 24px;
     gap: 32px;
+    border-radius: 28px;
+    width: calc(100% - 32px);
   }
 `;
 
@@ -381,11 +563,12 @@ const MockTelemetryUi = styled.div`
   background: #ffffff;
   border-radius: 24px;
   border: 1px solid #e5e5ea;
-  padding: 20px;
+  padding: 24px;
   box-shadow: 0 15px 35px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-sizing: border-box;
 `;
 
 const TelemetryRow = styled.div`
@@ -415,6 +598,7 @@ const AvatarStub = styled.div<{ $bg: string }>`
   font-size: 12px;
   font-weight: 700;
   color: white;
+  flex-shrink: 0;
 `;
 
 // ─── SECTION: ACCORDION FAQ ─────────────────────────────────────────────
@@ -445,6 +629,12 @@ const FaqHeader = styled.div`
   font-weight: 600;
   font-size: 16px;
   color: #111111;
+
+  @media(max-width: 576px) {
+    font-size: 15px;
+    padding: 16px 20px;
+    gap: 12px;
+  }
 `;
 
 const FaqBody = styled.div<{ $isOpen: boolean }>`
@@ -456,12 +646,17 @@ const FaqBody = styled.div<{ $isOpen: boolean }>`
   line-height: 1.6;
   color: #666666;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @media(max-width: 576px) {
+    padding: ${({ $isOpen }) => ($isOpen ? '0 20px 16px 20px' : '0 20px')};
+  }
 `;
 
 const ChevronIcon = styled(ChevronDown)<{ $isOpen: boolean }>`
   transform: rotate(${({ $isOpen }) => ($isOpen ? '180deg' : '0deg')});
   transition: transform 0.2s ease;
   color: #8e8e93;
+  flex-shrink: 0;
 `;
 
 // ─── SECTION: STRUCTURAL FOOTER ─────────────────────────────────────────
@@ -471,6 +666,7 @@ const AppFooter = styled.footer`
   padding: 64px 24px 32px 24px;
   margin-top: auto;
   width: 100%;
+  box-sizing: border-box;
 `;
 
 const FooterMainGrid = styled.div`
@@ -545,7 +741,6 @@ const FooterSocials = styled.div`
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // ✅ FIXED: Initializing modern, updated Lenis instance without deprecated wrappers
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -622,21 +817,22 @@ export default function Home() {
             </MapHUDCard>
           </MapCanvasMock>
 
-          <FloatingElement style={{ top: '40px', left: '10px' }}>
+          {/* ✅ FIXED: Restored safely on mobile by dynamically scaling it to fit via CSS media queries */}
+          <FloatingElement style={{ top: '10%', left: '0%' }}>
             <div style={{ background: '#e6f7f0', padding: '6px', borderRadius: '8px', color: '#10b981' }}>
               <Search size={14} />
             </div>
             <span>Find Parishes Instantly</span>
           </FloatingElement>
 
-          <FloatingElement style={{ top: '160px', right: '-10px' }} $delay>
+          <FloatingElement style={{ top: '40%', right: '0%' }} $delay>
             <div style={{ background: '#f2f2f7', padding: '6px', borderRadius: '8px', color: '#007aff' }}>
               <Milestone size={14} />
             </div>
             <span>Gate Openings Info</span>
           </FloatingElement>
 
-          <FloatingElement style={{ top: '300px', left: '-20px' }}>
+          <FloatingElement style={{ bottom: '15%', left: '5%' }}>
             <div style={{ background: '#fff0ee', padding: '6px', borderRadius: '8px', color: '#ff3b30' }}>
               <MapPin size={14} />
             </div>
@@ -652,6 +848,7 @@ export default function Home() {
           <SectionTitle>Engineered For High-Density Congestion</SectionTitle>
         </SectionHeader>
 
+        {/* ✅ FIXED: Explicit grid tracking rules applied to strictly prevent overlapping elements */}
         <BentoGrid>
           <BentoCard $big>
             <IconCircle $bg="#e6f7f0" $color="#10b981">
@@ -694,6 +891,55 @@ export default function Home() {
           </BentoCard>
         </BentoGrid>
       </SectionWrapper>
+
+      {/* 🤖 NEW SECTION: AI COPILOT INTERACTION */}
+      <AiSection>
+        <HeroLeft>
+          <PillBadge $dark><Sparkles size={12} fill="currentColor" /> AI CAMP ASSISTANT</PillBadge>
+          <SectionTitle $dark>Just Ask. Tell the AI where you want to go.</SectionTitle>
+          <SubText $dark>
+            Not sure what you're looking for? Chat with the RedeemGo AI Assistant. Whether you're looking for hot meals, a quiet place to pray, or the nearest restroom, the AI instantly computes the best route for you.
+          </SubText>
+        </HeroLeft>
+
+        <AiMockupContainer>
+          <PhoneFrame>
+            {/* User Message */}
+            <ChatBubbleUser>
+              Where can I get food to eat in the camp right now? I'm near the Old Arena.
+            </ChatBubbleUser>
+
+            {/* AI Typing / Response */}
+            <ChatBubbleAi>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 700, marginBottom: '4px' }}>
+                <Bot size={14} /> Redeem AI
+              </div>
+              
+              City Mart is currently open and just 400m away from your location. They serve hot meals and snacks.
+              
+              <GeneratedRouteCard>
+                <div className="card-header">
+                  <span className="title">City Mart Eatery</span>
+                  <span className="dist">400m Away</span>
+                </div>
+                <button className="route-btn">
+                  <Navigation size={12} fill="currentColor" /> Start Route
+                </button>
+              </GeneratedRouteCard>
+            </ChatBubbleAi>
+
+            {/* Continuous Typing Indicator Animation */}
+            <ChatBubbleAi style={{ width: 'fit-content', padding: '10px 14px' }}>
+              <ChatTypingIndicator>
+                <span />
+                <span />
+                <span />
+              </ChatTypingIndicator>
+            </ChatBubbleAi>
+
+          </PhoneFrame>
+        </AiMockupContainer>
+      </AiSection>
 
       {/* Live Telemetry Circles Component Section */}
       <SplitSection>
