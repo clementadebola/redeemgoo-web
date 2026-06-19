@@ -300,6 +300,9 @@ const BottomGroup = styled.div`
   flex-direction: column;
   gap: 16px;
   align-items: center;
+  
+  /* ✅ FIXED: Push up from bottom edge, especially for iPhone notches */
+  padding-bottom: max(92px, env(safe-area-inset-bottom));
 `;
 
 const MobileCloseBtn = styled.button`
@@ -389,7 +392,7 @@ const NavButtonTrigger = styled.button<{ $isExpanded: boolean }>`
     transition: opacity 0.2s ease;
 
     @media (max-width: 768px) {
-      opacity: 1; /* Always visible on mobile */
+      opacity: 1; 
     }
   }
 `;
