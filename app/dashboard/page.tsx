@@ -202,6 +202,23 @@ const CatScroll = styled.div`
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 8px;
+  
+  /* ✅ FIXED: Smooth mobile touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  
+  /* Optional: Makes it snap neatly to the items like the map carousel */
+  scroll-snap-type: x mandatory;
+  
+  /* Hide the scrollbar for a native app feel */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar { 
+    display: none; /* Chrome/Safari/Edge */
+  }
+
+  & > * {
+    scroll-snap-align: start; /* Ensures items lock into place nicely */
+  }
 `;
 
 const CatPill = styled.button`
