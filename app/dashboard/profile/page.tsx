@@ -5,7 +5,7 @@ import styled, { css } from 'styled-components';
 import { useRouter } from 'next/navigation';
 import { 
   User, MapPin, Settings, HelpCircle, LogOut, 
-  ChevronRight, Edit2, Users, Crown, Key, Save, X, ChevronDown, ChevronUp
+  ChevronRight, Edit2, Users, Crown, Key, Save, X, ChevronDown, ChevronUp, Navigation
 } from 'lucide-react';
 import { updatePassword, updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -16,6 +16,7 @@ import { useGroupStore } from '../../store/groupStore';
 // Component Injections
 import HistoryModal from './HistoryModal';
 import LogoutModal from '../../(auth)/logout/page';
+import LocationPermissionModal from '../../components/modals/LocationPermissionModal'; // ✅ NEW IMPORT
 
 const Colors = {
   primary: '#10b981',
@@ -36,9 +37,10 @@ interface MenuItemProps {
   onPress: () => void;
   danger?: boolean;
   rightText?: string;
+  isStatusToggle?: boolean; // ✅ Added to style the ON/OFF text distinctly
 }
 
-function MenuItem({ icon, label, onPress, danger = false, rightText }: MenuItemProps) {
+function MenuItem({ icon, label, onPress, danger = false, rightText, isStatusToggle }: MenuItemProps) {
   const handleItemClick = () => {
     if (typeof window !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(10);
@@ -53,7 +55,11 @@ function MenuItem({ icon, label, onPress, danger = false, rightText }: MenuItemP
       </MenuIconBg>
       <MenuLabel $danger={danger}>{label}</MenuLabel>
       <MenuRight>
-        {rightText && <MenuRightBadge>{rightText}</MenuRightBadge>}
+        {rightText && (
+          <MenuRightBadge $isStatusToggle={isStatusToggle} $isOn={rightText === 'ON'}>
+            {rightText}
+          </MenuRightBadge>
+        )}
         <ChevronRight size={18} color={danger ? Colors.error : Colors.textSecondary} />
       </MenuRight>
     </StyledMenuItem>
@@ -64,28 +70,24 @@ export default function ProfilePage() {
   const router = useRouter();
   const { profile, user } = useAuthStore();
   
-  // ✅ EXACT MATCH TO YOUR HOME PAGE STORE SCHEMA
   const { userGroups = [], listenToGroupAndNotifications } = useGroupStore(); 
 
-  // Interaction Panel States
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [groupsExpanded, setGroupsExpanded] = useState(false);
   
-  // Forms Inputs States
   const [editName, setEditName] = useState(profile?.displayName ?? user?.displayName ?? '');
   const [editUsername, setEditUsername] = useState(profile?.username ?? '');
   const [newPassword, setNewPassword] = useState('');
   
-  // Feedback States
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
   const [actionLoading, setActionLoading] = useState(false);
 
   // Dialog window states
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false); // ✅ NEW STATE
 
-  // ✅ REAL-TIME LISTENER MATRIX AS DONE ON HOME PAGE
   useEffect(() => {
     if (!user?.uid) return;
     const unsub = listenToGroupAndNotifications(user.uid);
@@ -98,6 +100,7 @@ export default function ProfilePage() {
   const totalTrips = profile?.tripsCount ?? 0;
   const savedPlacesCount = profile?.savedPlaces?.length ?? 0;
   const userRating = profile?.rating ?? '5.0';
+  const locationEnabled = profile?.locationEnabled ?? false; // ✅ READ LOCATION STATUS
 
   const initials = displayName
     .split(' ')
@@ -106,7 +109,6 @@ export default function ProfilePage() {
     .toUpperCase()
     .slice(0, 2) || 'U';
 
-  // ✅ CAP TO A MINIMUM OF 2 GROUPS BY DEFAULT
   const visibleGroups = useMemo(() => {
     return groupsExpanded ? userGroups : userGroups.slice(0, 2);
   }, [userGroups, groupsExpanded]);
@@ -154,6 +156,21 @@ export default function ProfilePage() {
       setStatusMsg({ type: 'error', text: err.message || 'Requires fresh session re-authentication.' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // ✅ TOGGLE LOCATION HANDLER
+  const handleToggleLocation = async () => {
+    if (locationEnabled) {
+      // If it's already ON, turning it OFF is instant (No modal needed)
+      if (user?.uid) {
+        const profileRef = doc(db, 'users', user.uid);
+        await updateDoc(profileRef, { locationEnabled: false });
+        setStatusMsg({ type: 'success', text: 'Location tracking disabled.' });
+      }
+    } else {
+      // If it's OFF, pop open the modal to explain and request permission
+      setLocationModalOpen(true);
     }
   };
 
@@ -249,7 +266,6 @@ export default function ProfilePage() {
             );
           })}
 
-          {/* Toggle triggers the userGroups visibility count */}
           {userGroups.length > 2 && (
             <ShowMoreToggleButton type="button" onClick={() => setGroupsExpanded(!groupsExpanded)}>
               <span>{groupsExpanded ? 'Collapse Pipelines' : `View All Registered Circles (${userGroups.length})`}</span>
@@ -285,6 +301,13 @@ export default function ProfilePage() {
       {/* Configuration Menu Actions Stack */}
       <MenuBlockContainer>
         <MenuItem
+          icon={<Navigation size={18} color={locationEnabled ? Colors.primary : Colors.textSecondary} />}
+          label="Location Services"
+          rightText={locationEnabled ? 'ON' : 'OFF'}
+          isStatusToggle
+          onPress={handleToggleLocation}
+        />
+        <MenuItem
           icon={<User size={18} color={Colors.primary} />}
           label="Account Profile Metadata"
           onPress={() => alert('Account metrics verified.')}
@@ -319,8 +342,10 @@ export default function ProfilePage() {
 
       <VersionLabelText>RedeemGo Workspace v1.0.0</VersionLabelText>
 
+      {/* Modals */}
       <HistoryModal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} userId={user?.uid} />
       <LogoutModal isOpen={logoutOpen} onClose={() => setLogoutOpen(false)} />
+      <LocationPermissionModal isOpen={locationModalOpen} onClose={() => setLocationModalOpen(false)} />
     </ScrollContainerWrapper>
   );
 }
@@ -579,13 +604,21 @@ const MenuRight = styled.div`
   gap: 6px;
 `;
 
-const MenuRightBadge = styled.span`
+// ✅ UPDATED TO SUPPORT THE ON/OFF TOGGLE STYLES
+const MenuRightBadge = styled.span<{ $isStatusToggle?: boolean; $isOn?: boolean }>`
   font-size: 11px;
   font-weight: 700;
-  color: ${Colors.primary};
-  background-color: ${Colors.primaryLight};
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 50px;
+  transition: all 0.2s;
+
+  ${({ $isStatusToggle, $isOn }) => 
+    $isStatusToggle 
+      ? $isOn 
+        ? `color: #ffffff; background-color: ${Colors.primary};`
+        : `color: ${Colors.white}; background-color: ${Colors.error};`
+      : `color: ${Colors.primary}; background-color: ${Colors.primaryLight};`
+  }
 `;
 
 const VersionLabelText = styled.span`

@@ -287,7 +287,7 @@ const FabButton = styled.button`
      above that card instead of guessing a taller fixed offset. */
   @media (max-width: 768px) {
 
-    bottom: 220px;
+    bottom: 270px;
     left: 12px;
     width: 48px;
     height: 48px;

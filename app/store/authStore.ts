@@ -20,6 +20,9 @@ export interface UserProfile {
   createdAt?: string;
   tripsCount?: number;
   rating?: string | number;
+  // ✅ NEW: Location tracking state properties
+  locationEnabled?: boolean;
+  locationPrompted?: boolean;
 }
 
 interface AuthState {
@@ -87,6 +90,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         username: username.toLowerCase(),
         savedPlaces: [],
         createdAt: new Date().toISOString(),
+        // ✅ NEW: Initialize these as false for brand new users
+        locationEnabled: false,
+        locationPrompted: false,
       };
 
       await setDoc(doc(db, 'users', cred.user.uid), profile);

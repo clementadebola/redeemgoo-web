@@ -52,9 +52,10 @@ const MapComponent = dynamic(
         </div>
       </div>
     ),
-  },
+  }
 );
 
+// ✅ FIXED: Correct Coordinates for Redemption City in Ogun State
 const CAMP_BOUNDS = {
   minLat: 6.7500,
   maxLat: 6.8300,
@@ -96,17 +97,12 @@ type LocationStatus =
   | "denied"
   | "unavailable";
 
-const STYLE_CYCLE: { style: MapStyle; label: string; icon: React.ReactNode }[] =
-  [
-    { style: "streets", label: "2D Map", icon: <MapIcon size={14} /> },
-    { style: "satellite", label: "Satellite", icon: <Satellite size={14} /> },
-    {
-      style: "satellite-streets",
-      label: "Hybrid",
-      icon: <Satellite size={14} />,
-    },
-    { style: "dark", label: "Dark", icon: <Moon size={14} /> },
-  ];
+const STYLE_CYCLE: { style: MapStyle; label: string; icon: React.ReactNode }[] = [
+  { style: "streets", label: "2D Map", icon: <MapIcon size={14} /> },
+  { style: "satellite", label: "Satellite", icon: <Satellite size={14} /> },
+  { style: "satellite-streets", label: "Hybrid", icon: <Satellite size={14} /> },
+  { style: "dark", label: "Dark", icon: <Moon size={14} /> },
+];
 
 export default function MapScreen() {
   const { user } = useAuthStore();
@@ -142,7 +138,7 @@ export default function MapScreen() {
     activeRoute,
     loadingRoute,
     calculateInAppRoute,
-    switchRouteMode, 
+    switchRouteMode,
     clearActiveRoute,
   } = useMapController(userLocation);
 
@@ -173,7 +169,7 @@ export default function MapScreen() {
             },
           }));
         },
-        (err) => console.warn(`Location stream ${memberId}:`, err.message),
+        (err) => console.warn(`Location stream ${memberId}:`, err.message)
       );
       unsubs.push(unsub);
     });
@@ -186,7 +182,7 @@ export default function MapScreen() {
     return routeCoords.map((c: any) =>
       Array.isArray(c)
         ? [c[0], c[1]]
-        : [c.longitude ?? c.lng, c.latitude ?? c.lat],
+        : [c.longitude ?? c.lng, c.latitude ?? c.lat]
     );
   }, [routeCoords]);
 
@@ -203,9 +199,9 @@ export default function MapScreen() {
               latitude,
               longitude,
               CAMP_CENTER.latitude,
-              CAMP_CENTER.longitude,
-            ),
-          ),
+              CAMP_CENTER.longitude
+            )
+          )
         );
       } else {
         setDistanceFromCamp(null);
@@ -228,27 +224,8 @@ export default function MapScreen() {
         });
       }
     },
-    [],
+    []
   );
-
-  const requestUserLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus("unavailable");
-      return;
-    }
-    setLocationStatus("requesting");
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: { latitude, longitude } }) => {
-        applyPosition(latitude, longitude, true);
-      },
-      () => setLocationStatus("denied"),
-      { enableHighAccuracy: true, timeout: 15000 },
-    );
-  }, [applyPosition]);
-
-  useEffect(() => {
-    requestUserLocation();
-  }, [requestUserLocation]);
 
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
@@ -267,7 +244,7 @@ export default function MapScreen() {
         setIsTracking(false);
         watchIdRef.current = null;
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
     );
     watchIdRef.current = id;
     setIsTracking(true);
@@ -288,6 +265,11 @@ export default function MapScreen() {
       startTracking();
     }
   }, [isTracking, startTracking, stopTracking]);
+
+  // ✅ FIXED: Safely placed below `startTracking` declaration
+  useEffect(() => {
+    startTracking();
+  }, [startTracking]);
 
   useEffect(() => {
     return () => {
@@ -318,13 +300,13 @@ export default function MapScreen() {
             userLocation.latitude,
             userLocation.longitude,
             a.poi.lat,
-            a.poi.lng,
+            a.poi.lng
           ) -
           haversineMetres(
             userLocation.latitude,
             userLocation.longitude,
             b.poi.lat,
-            b.poi.lng,
+            b.poi.lng
           )
         );
       })
@@ -338,13 +320,13 @@ export default function MapScreen() {
         userLocation.latitude,
         userLocation.longitude,
         m.latitude,
-        m.longitude,
+        m.longitude
       ),
       distanceFromCamp: haversineMetres(
         CAMP_CENTER.latitude,
         CAMP_CENTER.longitude,
         m.latitude,
-        m.longitude,
+        m.longitude
       ),
       activeDestination: m.activeDestination ?? null,
     }));
@@ -363,7 +345,7 @@ export default function MapScreen() {
         duration: 2000,
       });
     },
-    [calculateInAppRoute, is3D],
+    [calculateInAppRoute, is3D]
   );
 
   const handleCancelNavigation = useCallback(() => {
@@ -478,7 +460,7 @@ export default function MapScreen() {
         {(locationStatus === "denied" || locationStatus === "unavailable") && (
           <S.LocationBanner
             $type="error"
-            onClick={requestUserLocation}
+            onClick={startTracking}
             style={{ cursor: "pointer" }}
           >
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -519,7 +501,7 @@ export default function MapScreen() {
                 userLocation.latitude,
                 userLocation.longitude,
                 item.lat,
-                item.lng,
+                item.lng
               );
               const distLabel =
                 dist < 1000
@@ -554,7 +536,7 @@ export default function MapScreen() {
           <NavigationHud
             activeRoute={activeRoute}
             onCancel={handleCancelNavigation}
-            onSwitchMode={switchRouteMode} 
+            onSwitchMode={switchRouteMode}
           />
         ) : (
           <S.CarouselContainer>
@@ -567,19 +549,19 @@ export default function MapScreen() {
                   userLocation.latitude,
                   userLocation.longitude,
                   poi.lat,
-                  poi.lng,
+                  poi.lng
                 );
                 
                 // ── CAROUSEL TRAFFIC FIX ──
-                // If the user is outside the camp (e.g. Lagos), we show "Driving" time.
-                // If they are inside the camp, we show "Walking" time.
                 const isOutsideCamp = dist > 8000; 
-                const speedDivider = isOutsideCamp ? 13.8 : 1.3; // 13.8m/s (50km/h) for car, 1.3m/s for walking
+                const speedDivider = isOutsideCamp ? 13.8 : 1.3;
                 let mins = Math.max(1, Math.round(dist / speedDivider / 60));
                 
                 if (isOutsideCamp) {
-                   mins = Math.round(mins * 2.6); // Multiply by 2.6 to simulate Lagos traffic exactly!
+                   mins = Math.round(mins * 2.6); 
                 }
+
+                // ✅ NO DUMMY FUNCTION HERE! Directly using imported formatDuration
 
                 return (
                   <S.PoiCard

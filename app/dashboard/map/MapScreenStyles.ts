@@ -255,15 +255,24 @@ export const CarouselHeaderTitle = styled.h3`
   opacity: 0.8;
 `;
 
+/* ✅ FIXED: Smooth iOS Scrolling & Snapping added here */
 export const CarouselScroll = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 12px;
   overflow-x: auto;
-  padding: 2px 18px;
+  padding: 4px 18px 16px; /* Added bottom padding so shadows don't clip */
+  
+  /* Smooth mobile touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  
+  /* Hide scrollbars */
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 `;
 
+/* ✅ FIXED: Added scroll-snap-align so cards snap to center */
 export const PoiCard = styled.div`
   background-color: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(0, 0, 0, 0.04);
@@ -272,6 +281,7 @@ export const PoiCard = styled.div`
   min-width: 180px;
   flex-shrink: 0;
   cursor: pointer;
+  scroll-snap-align: start; 
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: 0 4px 10px rgba(0,0,0,0.02);
   
@@ -319,6 +329,7 @@ export const PoiDistanceRow = styled.div`
   margin-bottom: 4px;
 `;
 
+/* ✅ FIXED: Pushed higher on mobile to clear the HUD */
 export const MyLocationFab = styled.button<{ $active?: boolean }>`
   position: absolute;
   bottom: 100px;
@@ -351,10 +362,15 @@ export const MyLocationFab = styled.button<{ $active?: boolean }>`
     0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.25), 0 8px 20px rgba(16,185,129,0.4); }
     50%      { box-shadow: 0 0 0 8px rgba(16,185,129,0.12), 0 8px 20px rgba(16,185,129,0.4); }
   }
+
+  @media (max-width: 768px) {
+    bottom: 250px; /* Completely clears the bottom UI sheet */
+  }
 `;
 
 // ── FAB Stack Controls Workspace ───────────────────────────────────────────
 
+/* ✅ FIXED: Stacked vertically on the RIGHT side of the screen so they don't block the HUD */
 export const FabStack = styled.div`
   position: absolute;
   top: 130px;
@@ -368,10 +384,10 @@ export const FabStack = styled.div`
 
   @media (max-width: 768px) {
     top: auto;
-    bottom: 232px;
-    left: 16px;
+    bottom: 310px; /* Stacks perfectly above MyLocationFab */
+    left: auto;
     right: 16px;
-    flex-direction: row;
+    flex-direction: column; 
     width: auto;
   }
 `;
@@ -392,6 +408,7 @@ const FabBase = styled.button`
     border-radius: 50%;
     justify-content: center;
     gap: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 
     span {
       display: none;
@@ -436,6 +453,10 @@ export const CoordPill = styled.div`
   pointer-events: all;
   box-shadow: 0 4px 14px rgba(0,0,0,0.2);
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    bottom: 310px; /* Stay clear of HUD */
+  }
 `;
 
 export const CoordClose = styled.button`
@@ -453,71 +474,4 @@ export const CoordClose = styled.button`
   margin-left: 2px;
   flex-shrink: 0;
   &:hover { background: rgba(255,255,255,0.25); }
-`;
-
-// ── Search Dropdown Inline AI Frameworks ──────────────────────────────────────
-
-export const AiSuggestionsSection = styled.div`
-  border-top: 1px solid ${Colors.border};
-  padding-top: 4px;
-`;
-
-export const AiSuggestionsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: ${Colors.primary};
-  padding: 8px 16px 4px;
-`;
-
-const dotBounce = keyframes`
-  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-  40%           { transform: scale(1); opacity: 1; }
-`;
-
-export const AiLoadingDots = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 16px 10px;
-
-  span {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: ${Colors.primary};
-    display: inline-block;
-    animation: ${dotBounce} 1.2s infinite ease-in-out;
-    &:nth-child(1) { animation-delay: 0s; }
-    &:nth-child(2) { animation-delay: 0.2s; }
-    &:nth-child(3) { animation-delay: 0.4s; }
-  }
-`;
-
-export const AiSuggestionRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:hover { background: ${Colors.primaryLight}; }
-`;
-
-export const AiSuggestionText = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: ${Colors.textPrimary};
-  line-height: 1.3;
-`;
-
-export const AiSuggestionSub = styled.div`
-  font-size: 11px;
-  color: ${Colors.primary};
-  font-weight: 600;
-  margin-top: 2px;
 `;
