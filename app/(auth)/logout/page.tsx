@@ -62,7 +62,7 @@ export default function LogoutModal({ isOpen, onClose }: LogoutModalProps) {
   );
 }
 
-// ─── STYLED MODAL BOX MODULE STRUCTURES ─────────────────────────────────────
+
 const ModalBackdrop = styled.div`
   position: fixed;
   top: 0;

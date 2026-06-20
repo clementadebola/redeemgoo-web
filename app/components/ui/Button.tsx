@@ -65,7 +65,7 @@ export default function Button({
   );
 }
 
-// ─── STYLED COMPONENTS & STYLING LOGIC ──────────────────────────────────────
+
 
 const COLORS = {
   primary: '#10b981',

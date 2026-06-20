@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { IoClose, IoMail, IoCheckmarkCircle } from 'react-icons/io5';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../lib/firebase'; // Adjust path if your firebase.ts is elsewhere
+import { auth } from '../../lib/firebase'; 
 import { Colors } from '../../constants/theme';
 
 interface ForgotPasswordModalProps {
@@ -94,7 +94,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
   );
 }
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────
+
 const Overlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;

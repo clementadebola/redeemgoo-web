@@ -31,7 +31,7 @@ export default function ActiveGroupWidget({ currentGroup, currentUserId, onManag
   return (
     <ActiveCard onClick={onManageClick}>
       <CardHeader>
-        {/* Dynamic Status Badge Indicator */}
+       
         <RoleBadge $isCreator={isCreator}>
           {isCreator ? <Crown size={12} /> : <User size={12} />}
           <span>{isCreator ? 'Group Creator' : 'Circle Member'}</span>
@@ -60,7 +60,7 @@ export default function ActiveGroupWidget({ currentGroup, currentUserId, onManag
   );
 }
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
+
 
 const ActiveCard = styled.button`
   background: ${Colors.white};

@@ -561,8 +561,6 @@ export default function MapScreen() {
                    mins = Math.round(mins * 2.6); 
                 }
 
-                // ✅ NO DUMMY FUNCTION HERE! Directly using imported formatDuration
-
                 return (
                   <S.PoiCard
                     key={`carousel-${poi.id}-${idx}`}

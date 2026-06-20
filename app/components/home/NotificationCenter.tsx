@@ -100,7 +100,7 @@ export default function NotificationCenter() {
   );
 }
 
-// ─── STYLED DESIGN UTILITIES ────────────────────────────────────────────────
+
 const Wrapper = styled.div`
   position: relative;
   display: inline-block;

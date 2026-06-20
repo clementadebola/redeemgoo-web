@@ -13,10 +13,9 @@ import { db, auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { useGroupStore } from '../../store/groupStore';
 
-// Component Injections
 import HistoryModal from './HistoryModal';
 import LogoutModal from '../../(auth)/logout/page';
-import LocationPermissionModal from '../../components/modals/LocationPermissionModal'; // ✅ NEW IMPORT
+import LocationPermissionModal from '../../components/modals/LocationPermissionModal'; 
 
 const Colors = {
   primary: '#10b981',
@@ -350,7 +349,7 @@ export default function ProfilePage() {
   );
 }
 
-// ─── STYLED DESIGN WORKSPACE PANELS ──────────────────────────────────────────
+
 const ScrollContainerWrapper = styled.main`
   padding: 32px;
   max-width: 640px;

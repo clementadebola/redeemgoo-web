@@ -116,7 +116,7 @@ export default function LocationPermissionModal({ isOpen, onClose }: LocationPer
   );
 }
 
-// ─── STYLED COMPONENTS ────────────────────────────────────────────────────────
+
 const Overlay = styled.div`
   position: fixed;
   inset: 0;

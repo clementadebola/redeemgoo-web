@@ -166,7 +166,6 @@ export default function AIAssistantPanel({ userLocation, groupMembers, onNavigat
   );
 }
 
-// ─── Renders the agent's structured response as the right UI ─────────────────
 
 function AssistantBubbleRenderer({
   response,
@@ -242,7 +241,6 @@ function AssistantBubbleRenderer({
   );
 }
 
-// ─── Animations ───────────────────────────────────────────────────────────────
 
 const popIn = keyframes`
   from { opacity: 0; transform: scale(0.9) translateY(8px); }

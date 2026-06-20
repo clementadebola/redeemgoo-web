@@ -147,7 +147,6 @@ export default function GroupWidget({ userGroups, currentGroup, setCurrentGroup,
   );
 }
 
-// ─── STYLED COMPONENT ENCAPSULATIONS ────────────────────────────────────────
 const BentoWidgetCard = styled.div`
   background: ${Colors.white};
   border: 1px solid ${Colors.border};

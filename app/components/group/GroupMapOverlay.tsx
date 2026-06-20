@@ -193,7 +193,7 @@ export default function GroupMapOverlay({
 
     const now = Date.now();
     const elapsed = now - lastNarrativeFetchRef.current;
-    if (elapsed < NARRATIVE_COOLDOWN_MS) return; // still in cooldown — skip silently
+    if (elapsed < NARRATIVE_COOLDOWN_MS) return; 
     lastNarrativeFetchRef.current = now;
 
     let cancelled = false;
@@ -394,7 +394,7 @@ export default function GroupMapOverlay({
   );
 }
 
-// ─── Animations ───────────────────────────────────────────────────────────────
+
 
 const pulseAnim = keyframes`
   0% { transform: scale(1); opacity: 1; }
@@ -412,7 +412,6 @@ const slideDown = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// ─── Styled Components ────────────────────────────────────────────────────────
 
 const Panel = styled.div<{ $hasWarning: boolean }>`
   position: absolute;

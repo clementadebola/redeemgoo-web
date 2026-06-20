@@ -257,7 +257,7 @@ export default function GroupsManagerPage() {
   );
 }
 
-// ─── ADDED NEW STYLES FOR ADMIN FEATURES ──────────────────────────────────
+
 const AdminBadge = styled.span`
   background-color: ${Colors.primaryLight};
   color: ${Colors.primary};
@@ -300,7 +300,7 @@ const AdminControlsCard = styled.div`
   flex-direction: column;
 `;
 
-// ─── EXISTING ALIGNMENT STYLES ───────────────────────────────────────────
+
 const HeaderControlRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -341,7 +341,7 @@ const BackButton = styled.button`
   &:hover { color: ${Colors.textPrimary}; }
 `;
 
-// ─── CORE LAYOUT STYLES ───────────────────────────────────────────
+
 const ContainerWrapper = styled.div`
   padding: 32px;
   max-width: 1000px;

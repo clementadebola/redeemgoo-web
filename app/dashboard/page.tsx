@@ -113,7 +113,7 @@ export default function HomeScreen() {
   );
 }
 
-// ─── HIGH PERFORMANCE SCREEN STYLED LAYOUTS ────────────────────────────────
+
 const ScreenContainer = styled.div`
   padding: 24px;
   max-width: 900px;

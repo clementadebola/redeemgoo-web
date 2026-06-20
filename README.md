@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 RedeemGo
 
-## Getting Started
+**The intelligent, real-time navigation and safety companion for Redemption City.**
 
-First, run the development server:
+RedeemGo is a high-performance web application designed to solve the complex navigation challenges within massive, densely populated areas like Redemption City. It combines real-time GPS group tracking, custom geofenced Mapbox routing, and an ultra-fast AI assistant to guide users effortlessly to halls, gates, and auditoriums.
 
+---
+
+## ✨ Key Features
+
+* 🤖 **Redeem AI (Powered by Groq):** A lightning-fast, context-aware AI assistant utilizing Llama-3. It doesn't just chat—it actively executes tool calls to query locations, calculate distances, and seamlessly trigger the Map UI to plot routes for the user.
+* 📍 **Live Group Tracking ("Circles"):** Built on Firebase real-time listeners, users can form private circles to track family and friends live on the map, complete with custom avatar markers and distance metrics.
+* 🗺️ **Intelligent Mapping & Geofencing:** Integrates Mapbox for 3D/2D mapping, hybrid satellite views, and real-time traffic routing. Features strict geofencing to prevent out-of-bounds routing errors.
+* 📱 **Native-App UX:** Built with Styled Components for a flawless mobile experience, featuring iOS-style smooth scrolling, snapping carousels, bottom-sheet HUDs, and dynamic viewport handling.
+* 🛡️ **Secure Admin Dashboard:** A dedicated, protected route for superadmins to monitor system telemetry, active tracking nodes, and user registries in real-time.
+
+---
+
+## 🛠️ Tech Stack
+
+RedeemGo is built with a modern, highly scalable architecture:
+
+**Frontend Framework**
+* **[Next.js (App Router)](https://nextjs.org/):** For fast server-side rendering, optimized client components, and seamless API route handling.
+* **[Styled Components](https://styled-components.com/):** For scoped, highly dynamic CSS-in-JS, allowing complex theme switching and native-feeling mobile layouts.
+* **[Lucide React](https://lucide.dev/):** For crisp, lightweight SVG iconography.
+
+**AI & Machine Learning**
+* **[Groq API](https://groq.com/):** Utilizing the `llama-3.1-8b-instant` model for near-zero latency conversational AI and complex JSON tool calling.
+* **Zustand:** For lightweight, fast global state management (Auth, Location, and Group data).
+
+**Backend & Data**
+* **[Firebase Auth](https://firebase.google.com/):** Secure email/password authentication and session management.
+* **[Firebase Firestore](https://firebase.google.com/):** NoSQL database utilized for real-time `onSnapshot` listeners, instantly syncing GPS coordinates across user groups.
+
+**Mapping Infrastructure**
+* **[Mapbox GL JS](https://www.mapbox.com/):** For rendering custom interactive maps, 3D building extrusions, and handling precise pedestrian/vehicle routing APIs.
+
+---
+
+## 🚀 Getting Started
+
+Follow these instructions to run RedeemGo locally.
+
+### 1. Clone the repository
 ```bash
+git clone [https://github.com/your-username/redeemgo.git](https://github.com/your-username/redeemgo.git)
+cd redeemgo
+
+npm install
+# or
+yarn install
+
+
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

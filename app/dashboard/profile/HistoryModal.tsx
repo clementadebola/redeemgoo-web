@@ -93,7 +93,6 @@ export default function HistoryModal({ isOpen, onClose, userId }: HistoryModalPr
   );
 }
 
-// ─── STYLED HISTORY INTERFACE STRUCTURES ────────────────────────────────────
 const Backdrop = styled.div`
   position: fixed;
   top: 0;

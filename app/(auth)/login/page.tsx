@@ -12,8 +12,7 @@ import Input from "../../components/ui/Input";
 import { useAuthStore } from "../../store/authStore";
 import { Colors, Spacing, BorderRadius } from "../../constants/theme";
 
-// ✅ Import the new modal component
-import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal"; // Adjust path as needed
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal"; 
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +22,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   
-  // ✅ State to control the modal visibility
+
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const [errors, setErrors] = useState<{
@@ -112,7 +111,6 @@ export default function LoginPage() {
           </Fields>
 
           <ForgotRow>
-            {/* ✅ Changed from Link to a button trigger */}
             <ForgotButton type="button" onClick={() => setIsForgotModalOpen(true)}>
               Forgot password?
             </ForgotButton>
@@ -131,17 +129,15 @@ export default function LoginPage() {
         </Footer>
       </Content>
 
-      {/* ✅ Mount the Modal at the bottom of the container */}
       <ForgotPasswordModal 
         isOpen={isForgotModalOpen} 
         onClose={() => setIsForgotModalOpen(false)} 
-        initialEmail={email} // Passes their typed email so they don't have to retype it
+        initialEmail={email} 
       />
     </Container>
   );
 }
 
-// ─── STYLED COMPONENTS ──────────────────────────────────────────────────────
 
 const Container = styled.main`
   min-height: 100vh;

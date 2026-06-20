@@ -140,7 +140,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-// ─── STYLED CSS-IN-JS COMPONENTS ──────────────────────────────────────────
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -154,7 +153,7 @@ const LayoutContainer = styled.div`
   }
 `;
 
-// ── Mobile Specific Layouts ──
+
 const MobileHeader = styled.div`
   display: none;
   align-items: center;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useRouter } from 'next/navigation'; // ✅ Added router hook
+import { useRouter } from 'next/navigation';
 import { 
   getAuth, signInWithEmailAndPassword, signOut, updatePassword, onAuthStateChanged, Auth 
 } from 'firebase/auth';
@@ -54,7 +54,7 @@ interface LiveGroup {
 }
 
 export default function AdminDashboardPortal() {
-  const router = useRouter(); // ✅ Initialized router instance
+  const router = useRouter(); 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState('');
@@ -174,7 +174,7 @@ export default function AdminDashboardPortal() {
     );
   }
 
-  // ─── LOGIN GUARD VIEWPORT FRAME ───────────────────────────────────────────
+
   if (!isAdmin) {
     return (
       <LoginViewportContainer>
@@ -227,7 +227,7 @@ export default function AdminDashboardPortal() {
     );
   }
 
-  // ─── MASTER DASHBOARD WORKSPACE ───────────────────────────────────────────
+ 
   return (
     <MasterAdminWorkspace>
       {/* Mobile Top Header Bar */}
@@ -437,7 +437,7 @@ export default function AdminDashboardPortal() {
   );
 }
 
-// ─── STYLED DESIGN PANELS INFRASTRUCTURES ───────────────────────────────────
+
 const LoadingFallbackWrapper = styled.div`
   width: 100vw;
   height: 100vh;

@@ -101,7 +101,6 @@ export default function InviteUserCard({ onInvite }: InviteUserCardProps) {
   );
 }
 
-// ─── STYLED LOGIC DESIGN ENGINES ────────────────────────────────────────────
 
 const InteractiveFormCard = styled.form`
   background-color: ${Colors.white};
